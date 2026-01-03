@@ -21,11 +21,14 @@ public class Server {
         out = new PrintWriter(clientSocket.getOutputStream(), true);
         in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 
-        String greeting = in.readLine();
-        if (greeting.equals("Hello server")) {
-            out.println("Hello client");
-        } else {
-            out.println("Unrecognised greeting");
+        String inputLine;
+        while ((inputLine = in.readLine()) != null) {
+            if (".".equals(inputLine)) {
+                out.println("Goodbye");
+                break;
+            }
+
+            out.println(inputLine);
         }
     }
 
@@ -38,6 +41,9 @@ public class Server {
 
     public static void main(String[] args) throws IOException {
         Server server = new Server();
-        server.start(PORT);
+        while (true) {
+            server.start(PORT);
+            server.stop();
+        }
     }
 }

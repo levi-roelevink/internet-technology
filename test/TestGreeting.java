@@ -11,8 +11,12 @@ public class TestGreeting {
         Client client = new Client();
         client.startConnection("127.0.0.1", 3000);
         String response = client.sendMessage("Hello server");
-        assertEquals("Hello client", response);
+        assertEquals("Hello server", response);
 
+        response = client.sendMessage("I am Bob");
+        assertEquals("I am Bob", response);
 
+        response = client.sendMessage(".");
+        assertEquals("Goodbye", response);
     }
 }
