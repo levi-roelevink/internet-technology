@@ -6,9 +6,8 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.Arrays;
 
-public class GreetServer {
+public class Server {
     private final static int PORT = 3000;
     private Socket clientSocket;
     private ServerSocket serverSocket;
@@ -38,7 +37,7 @@ public class GreetServer {
     }
 
     public static void main(String[] args) throws IOException {
-        GreetServer server = new GreetServer();
+        Server server = new Server();
         server.start(PORT);
     }
 }
