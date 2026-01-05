@@ -59,6 +59,7 @@ function parseMessage(message) {
     payload = "{}"
   }
   const parsedPayload = JSON.parse(payload)
+    console.log("parsedPayload", parsedPayload)
   return [command, parsedPayload]
 }
 

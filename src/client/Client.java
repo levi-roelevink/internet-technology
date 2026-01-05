@@ -11,6 +11,9 @@ public class Client {
     private Socket clientSocket;
     private PrintWriter out;
     private BufferedReader in;
+    private Scanner scanner;
+    private static final int PORT = 1337;
+    private static final String IP = "127.0.0.1";
 
     public static void main(String[] args) throws IOException {
         Client client = new Client();
@@ -34,10 +37,44 @@ public class Client {
         clientSocket.close();
     }
 
-    public void run() throws IOException {
-        startConnection("127.0.0.1", 3000);
+    public void login() {
+        System.out.print("Enter your name: ");
+        String name = scanner.nextLine();
 
-        Scanner scanner = new Scanner(System.in);
+        // TODO: what if the name is invalid?
+
+        System.out.printf("Name provided %s\n", name);
+        // TODO: how do we specifically inform the server that this is the name we want to login with?
+
+        String message = "LOGIN " + name;
+        out.println(message);
+    }
+
+    public void awaitWelcome() throws IOException {
+        String inputLine;
+        while ((inputLine = in.readLine()) != null) {
+            String[] splits = inputLine.split(" ", 2);
+
+            String command = splits[0];
+            System.out.println("Command: " + command);
+
+            // TODO: deserialize JSON
+            String message = splits[1];
+            System.out.println("Message: " + message);
+        }
+    }
+
+//    private String[] parseMessage() {
+//
+//    }
+
+    public void run() throws IOException {
+        scanner = new Scanner(System.in);
+        startConnection(IP, PORT);
+
+        awaitWelcome();
+
+        login();
 
         while (true) {
             System.out.print("Enter a message: ");
