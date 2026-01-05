@@ -46,10 +46,6 @@ public class Client {
         clientSocket.close();
     }
 
-    private Message parseMessage(String jsonString) throws JsonProcessingException {
-        return objectMapper.readValue(jsonString, Message.class);
-    }
-
     public void run() throws IOException {
         scanner = new Scanner(System.in);
         objectMapper = new ObjectMapper();
@@ -62,6 +58,7 @@ public class Client {
                 String[] lineParts = line.split(" ", 2);
                 switch (lineParts[0]) {
                     case "WELCOME" -> handleWelcomeMessage(lineParts[1]);
+                    case "LOGIN_RESP" -> handleLoginResponse(lineParts[1]);
                 }
             } catch (Exception e) {
                 System.err.println(e);
@@ -80,28 +77,36 @@ public class Client {
         login();
     }
 
-    public void login() throws IOException {
-        System.out.print("Enter your name: ");
-        String userInput = scanner.nextLine();
-        // TODO: what if the name is invalid?
+    private void login() {
+        try {
+            System.out.print("Enter your name: ");
 
-        LoginMessage loginMsg = new LoginMessage(userInput);
-        // C -> S: LOGIN {"username":"<username>"}
-        out.println("LOGIN " + objectMapper.writeValueAsString(loginMsg));
+            String userInput = scanner.nextLine();
+            while (userInput == null || userInput.isBlank() || userInput.isEmpty()) {
+                System.out.print("Invalid username. Enter your name: ");
+                userInput = scanner.nextLine();
+            }
+            username = userInput;
 
-        String inputLine = in.readLine();
-        String[] splits = inputLine.split(" ", 2);
-        assert (Objects.equals(splits[0], "LOGIN_RESP")) : "Error logging in";
-
-        LoginResponseMessage loginResp = objectMapper.readValue(splits[1], LoginResponseMessage.class);
-        // S -> C: LOGIN_RESP {"status":"OK"}
-        if (!Objects.equals(loginResp.status(), "OK")) {
-            throw new RuntimeException("Error logging in");
+            out.println("LOGIN " + objectMapper.writeValueAsString(new LoginMessage(userInput)));
+        } catch (Exception e) {
+            System.err.println("Error logging in");
         }
+    }
 
-        // Set username after successful login
-        username = userInput;
+    private void handleLoginResponse(String jsonString) {
         assert username != null : "Username is still null after logging in";
-        System.out.printf("Successfully logged in. Welcome %s!", username);
+
+        try {
+            LoginResponseMessage loginResp = objectMapper.readValue(jsonString, LoginResponseMessage.class);
+
+            if (!loginResp.status().equals("OK")) {
+                throw new Exception("Error logging in");
+            }
+
+            System.out.printf("Successfully logged in. Welcome %s!", username);
+        } catch (Exception e) {
+            System.err.println("Error logging in");
+        }
     }
 }
