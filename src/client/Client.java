@@ -59,7 +59,7 @@ public class Client {
         // TODO: what if the name is invalid?
 
         LoginMessage loginMsg = new LoginMessage(userInput);
-        // C -> S: LOGON {"username":"<username>"}
+        // C -> S: LOGIN {"username":"<username>"}
         out.println("LOGIN " + objectMapper.writeValueAsString(loginMsg));
 
         inputLine = in.readLine();
@@ -67,7 +67,7 @@ public class Client {
         assert (Objects.equals(splits[0], "LOGIN_RESP")) : "Error logging in";
 
         LoginResponseMessage loginResp = objectMapper.readValue(splits[1], LoginResponseMessage.class);
-        // S -> C: LOGON_RESP {"status":"OK"}
+        // S -> C: LOGIN_RESP {"status":"OK"}
         if (!Objects.equals(loginResp.status(), "OK")) {
             throw new RuntimeException("Error logging in");
         }
