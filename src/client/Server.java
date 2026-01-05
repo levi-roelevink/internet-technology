@@ -43,6 +43,7 @@ public class Server {
 
                 String inputLine;
                 while ((inputLine = in.readLine()) != null) {
+                    System.out.printf("Received \"%s\"\n", inputLine);
                     if (".".equals(inputLine)) {
                         out.println("Goodbye");
                         break;
