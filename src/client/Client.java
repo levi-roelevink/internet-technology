@@ -82,7 +82,7 @@ public class Client {
             System.out.print("Enter your name: ");
 
             String userInput = scanner.nextLine();
-            while (userInput == null || userInput.isBlank() || userInput.isEmpty()) {
+            while (userInput == null || userInput.isBlank()) {
                 System.out.print("Invalid username. Enter your name: ");
                 userInput = scanner.nextLine();
             }
