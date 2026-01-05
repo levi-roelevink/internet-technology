@@ -46,14 +46,41 @@ public class Client {
         clientSocket.close();
     }
 
-    public void login() throws IOException {
-        String inputLine = in.readLine();
-        String[] splits = inputLine.split(" ", 2);
-        assert (Objects.equals(splits[0], "WELCOME")) : "Error connecting to the server";
+    private Message parseMessage(String jsonString) throws JsonProcessingException {
+        return objectMapper.readValue(jsonString, Message.class);
+    }
 
-        Message message = parseMessage(splits[1]);
+    public void run() throws IOException {
+        scanner = new Scanner(System.in);
+        objectMapper = new ObjectMapper();
+        startConnection(IP, PORT);
+
+        String line;
+
+        while ((line = in.readLine()) != null) {
+            try {
+                String[] lineParts = line.split(" ", 2);
+                switch (lineParts[0]) {
+                    case "WELCOME" -> handleWelcomeMessage(lineParts[1]);
+                }
+            } catch (Exception e) {
+                System.err.println(e);
+            }
+        }
+
+        stopConnection();
+    }
+
+    private void handleWelcomeMessage(String jsonString) throws IOException {
+        Message message = objectMapper.readValue(jsonString, Message.class);
         System.out.println(message);
 
+        assert username == null : "Unexpected welcome message from the server.";
+
+        login();
+    }
+
+    public void login() throws IOException {
         System.out.print("Enter your name: ");
         String userInput = scanner.nextLine();
         // TODO: what if the name is invalid?
@@ -62,8 +89,8 @@ public class Client {
         // C -> S: LOGIN {"username":"<username>"}
         out.println("LOGIN " + objectMapper.writeValueAsString(loginMsg));
 
-        inputLine = in.readLine();
-        splits = inputLine.split(" ", 2);
+        String inputLine = in.readLine();
+        String[] splits = inputLine.split(" ", 2);
         assert (Objects.equals(splits[0], "LOGIN_RESP")) : "Error logging in";
 
         LoginResponseMessage loginResp = objectMapper.readValue(splits[1], LoginResponseMessage.class);
@@ -76,33 +103,5 @@ public class Client {
         username = userInput;
         assert username != null : "Username is still null after logging in";
         System.out.printf("Successfully logged in. Welcome %s!", username);
-    }
-
-
-    private Message parseMessage(String jsonString) throws JsonProcessingException {
-        return objectMapper.readValue(jsonString, Message.class);
-    }
-
-    public void run() throws IOException {
-        scanner = new Scanner(System.in);
-        objectMapper = new ObjectMapper();
-        startConnection(IP, PORT);
-
-        login();
-
-        while (true) {
-            System.out.print("Enter a message: ");
-
-            String input = scanner.nextLine();
-            out.println(input);
-
-            String response = in.readLine();
-            System.out.println("SERVER: " + response);
-            if ("Goodbye".equals(response)) {
-                break;
-            }
-        }
-
-        stopConnection();
     }
 }
