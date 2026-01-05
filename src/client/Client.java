@@ -2,6 +2,8 @@ package client;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import messages.LoginMessage;
+import messages.LoginResponseMessage;
 import messages.Message;
 
 import java.io.BufferedReader;
@@ -20,6 +22,7 @@ public class Client {
     private ObjectMapper objectMapper;
     private static final int PORT = 1337;
     private static final String IP = "127.0.0.1";
+    private String username;
 
     public static void main(String[] args) throws IOException {
         Client client = new Client();
@@ -46,16 +49,35 @@ public class Client {
     public void login() throws IOException {
         String inputLine = in.readLine();
         String[] splits = inputLine.split(" ", 2);
-        assert (Objects.equals(splits[0], "WELCOME")) : "Unexpected opening message from the server: \"" + splits[0] + "\"";
+        assert (Objects.equals(splits[0], "WELCOME")) : "Error connecting to the server";
 
         Message message = parseMessage(splits[1]);
         System.out.println(message);
 
         System.out.print("Enter your name: ");
-        String name = scanner.nextLine();
+        String userInput = scanner.nextLine();
         // TODO: what if the name is invalid?
 
+        LoginMessage loginMsg = new LoginMessage(userInput);
+        // C -> S: LOGON {"username":"<username>"}
+        out.println("LOGIN " + objectMapper.writeValueAsString(loginMsg));
+
+        inputLine = in.readLine();
+        splits = inputLine.split(" ", 2);
+        assert (Objects.equals(splits[0], "LOGIN_RESP")) : "Error logging in";
+
+        LoginResponseMessage loginResp = objectMapper.readValue(splits[1], LoginResponseMessage.class);
+        // S -> C: LOGON_RESP {"status":"OK"}
+        if (!Objects.equals(loginResp.status(), "OK")) {
+            throw new RuntimeException("Error logging in");
+        }
+
+        // Set username after successful login
+        username = userInput;
+        assert username != null : "Username is still null after logging in";
+        System.out.printf("Successfully logged in. Welcome %s!", username);
     }
+
 
     private Message parseMessage(String jsonString) throws JsonProcessingException {
         return objectMapper.readValue(jsonString, Message.class);
