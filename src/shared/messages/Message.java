@@ -1,4 +1,4 @@
-package messages;
+package shared.messages;
 
 public record Message(String msg) {
     @Override

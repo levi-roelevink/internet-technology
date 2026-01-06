@@ -1,17 +1,15 @@
 package client;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import messages.LoginMessage;
-import messages.LoginResponseMessage;
-import messages.Message;
+import shared.messages.LoginMessage;
+import shared.messages.LoginResponseMessage;
+import shared.messages.Message;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
-import java.util.Objects;
 import java.util.Scanner;
 
 public class Client {
@@ -77,14 +75,27 @@ public class Client {
         login();
     }
 
+    private boolean usernameIsValid(String username) {
+        if (username == null || username.isBlank()) return false;
+
+        // Length must be between 3 and 14 characters
+        int length = username.length();
+        if (length < 3 || length > 14) return false;
+
+        // Username may only consist of characters, numbers, and underscores
+        return username.matches("^[a-zA-Z0-9_]+$");
+    }
+
     private void login() {
         try {
             System.out.print("Enter your name: ");
 
             String userInput = scanner.nextLine();
-            while (userInput == null || userInput.isBlank()) {
+            boolean validUsername = usernameIsValid(userInput);
+            while (!validUsername) {
                 System.out.print("Invalid username. Enter your name: ");
                 userInput = scanner.nextLine();
+                validUsername = usernameIsValid(userInput);
             }
             username = userInput;
 
@@ -104,7 +115,7 @@ public class Client {
                 throw new Exception("Error logging in");
             }
 
-            System.out.printf("Successfully logged in. Welcome %s!", username);
+            System.out.printf("Successfully logged in. Welcome %s!\n", username);
         } catch (Exception e) {
             System.err.println("Error logging in");
         }
