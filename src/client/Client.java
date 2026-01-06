@@ -13,10 +13,10 @@ import java.util.Scanner;
 
 public class Client {
     private Socket clientSocket;
-    private PrintWriter out;
+    private PrintWriter writer;
     private BufferedReader reader;
     private Scanner scanner;
-    private ObjectMapper objectMapper;
+    private ObjectMapper mapper;
     private static final int PORT = 1337;
     private static final String IP = "127.0.0.1";
 
@@ -31,11 +31,16 @@ public class Client {
 
     public void run() throws IOException {
         scanner = new Scanner(System.in);
-        objectMapper = new ObjectMapper();
+        mapper = new ObjectMapper();
         startConnection(IP, PORT);
 
         awaitWelcomeMessage();
         logIn();
+
+        ClientInputThread clientInputThread = new ClientInputThread(writer, mapper);
+        ServerInputThread serverInputThread = new ServerInputThread();
+        clientInputThread.start();
+        serverInputThread.start();
 
         stopConnection();
     }
@@ -45,7 +50,7 @@ public class Client {
         while ((receivedLine = reader.readLine()) != null) {
             String[] lineParts = receivedLine.split(" ", 2);
             if ("WELCOME".equals(lineParts[0])) {
-                GenericMessage message = objectMapper.readValue(lineParts[1], GenericMessage.class);
+                GenericMessage message = mapper.readValue(lineParts[1], GenericMessage.class);
                 System.out.println(message.msg());
                 return;
             }
@@ -61,7 +66,7 @@ public class Client {
             if (!usernameIsValid(userInput)) {
                 MessageCodePrinter.printMessageFromCode(5001);
             } else {
-                out.println("LOGIN " + objectMapper.writeValueAsString(new UsernameMessage(userInput)));
+                writer.println("LOGIN " + mapper.writeValueAsString(new UsernameMessage(userInput)));
                 loggedIn = awaitLoginResponse();
             }
         }
@@ -83,7 +88,7 @@ public class Client {
         while ((received = reader.readLine()) != null) {
             String[] lineParts = received.split(" ", 2);
             if ("LOGIN_RESP".equals(lineParts[0])) {
-                GenericMessage loginResp = objectMapper.readValue(lineParts[1], GenericMessage.class);
+                GenericMessage loginResp = mapper.readValue(lineParts[1], GenericMessage.class);
 
                 if (!loginResp.status().equals("OK")) {
                     MessageCodePrinter.printMessageFromCode(loginResp.code());
@@ -100,13 +105,13 @@ public class Client {
 
     public void startConnection(String ip, int port) throws IOException {
         clientSocket = new Socket(ip, port);
-        out = new PrintWriter(clientSocket.getOutputStream(), true);
+        writer = new PrintWriter(clientSocket.getOutputStream(), true);
         reader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
     }
 
     public void stopConnection() throws IOException {
         reader.close();
-        out.close();
+        writer.close();
         clientSocket.close();
     }
 }
