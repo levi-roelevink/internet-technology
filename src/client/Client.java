@@ -38,11 +38,11 @@ public class Client {
         logIn();
 
         ClientInputThread clientInputThread = new ClientInputThread(writer, mapper);
-        ServerInputThread serverInputThread = new ServerInputThread();
+        ServerInputThread serverInputThread = new ServerInputThread(writer, reader, mapper);
         clientInputThread.start();
         serverInputThread.start();
 
-        stopConnection();
+//        stopConnection();
     }
 
     private void awaitWelcomeMessage() throws IOException {

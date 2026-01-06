@@ -25,7 +25,9 @@ public class ClientInputThread extends Thread {
     @Override
     public void run() {
         while (true) {
+            System.out.println("");
             int userInput = getIntBetweenBounds(0, 5);
+            scanner.nextLine(); // Consume leftover line
 
             switch (userInput) {
                 case QUIT -> quit();
@@ -36,7 +38,9 @@ public class ClientInputThread extends Thread {
 
     private void handleBroadcastRequest() {
         try {
-            String message = null;
+            System.out.print("Enter your message: ");
+            String message = scanner.nextLine();
+
             while (message == null || message.isBlank()) {
                 System.out.print("Enter your message: ");
                 message = scanner.nextLine();
