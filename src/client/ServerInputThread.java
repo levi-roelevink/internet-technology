@@ -3,6 +3,7 @@ package client;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import shared.messages.BroadcastMessage;
 import shared.messages.GenericMessage;
 
 import java.io.BufferedReader;
@@ -32,7 +33,7 @@ public class ServerInputThread extends Thread {
                     String[] lineParts = line.split(" ", 2);
                     switch (lineParts[0]) {
                         case BROADCAST_RESP -> handleBroadcastResponse(lineParts[1]);
-                        case BROADCAST -> handleBroadcast();
+                        case BROADCAST -> handleBroadcast(lineParts[1]);
                         case PARSE_ERROR -> MessageCodePrinter.printMessageFromCode(9000);
                     }
                 }
@@ -52,26 +53,8 @@ public class ServerInputThread extends Thread {
         }
     }
 
-    private void handleBroadcast() {
-//        try {
-//
-//        }
-        // Parse the message
-        // Just sout?
+    private void handleBroadcast(String jsonString) throws JsonProcessingException {
+        BroadcastMessage message = mapper.readValue(jsonString, BroadcastMessage.class);
+        System.out.printf("%s: %s", message.username(), message.message());
     }
-
-//    private void temp() {
-//        String line;
-//
-//        while ((line = reader.readLine()) != null) {
-//            try {
-//                String[] lineParts = line.split(" ", 2);
-//                switch (lineParts[0]) {
-//                    case "LOGIN_RESP" -> handleLoginResponse(lineParts[1]);
-//                }
-//            } catch (Exception e) {
-//                System.err.println(e);
-//            }
-//        }
-//    }
 }
