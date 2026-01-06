@@ -1,4 +1,4 @@
 package shared.messages;
 
-public record GenericMessage(String status, String message, String username, int code) {
+public record GenericMessage(String status, String msg, String username, int code) {
 }

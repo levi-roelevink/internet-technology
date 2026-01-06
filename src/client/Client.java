@@ -1,9 +1,8 @@
 package client;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import shared.messages.LoginMessage;
+import shared.messages.UsernameMessage;
 import shared.messages.GenericMessage;
-import shared.messages.Message;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -15,33 +14,19 @@ import java.util.Scanner;
 public class Client {
     private Socket clientSocket;
     private PrintWriter out;
-    private BufferedReader in;
+    private BufferedReader reader;
     private Scanner scanner;
     private ObjectMapper objectMapper;
     private static final int PORT = 1337;
     private static final String IP = "127.0.0.1";
-    private String username;
 
-    public static void main(String[] args) throws IOException {
-        Client client = new Client();
-        client.run();
-    }
-
-    public void startConnection(String ip, int port) throws IOException {
-        clientSocket = new Socket(ip, port);
-        out = new PrintWriter(clientSocket.getOutputStream(), true);
-        in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-    }
-
-    public String sendMessage(String msg) throws IOException {
-        out.println(msg);
-        return in.readLine();
-    }
-
-    public void stopConnection() throws IOException {
-        in.close();
-        out.close();
-        clientSocket.close();
+    public static void main(String[] args) {
+        try {
+            new Client().run();
+        } catch (Exception e) {
+            System.err.println(e.getMessage());
+            System.exit(0);
+        }
     }
 
     public void run() throws IOException {
@@ -49,30 +34,37 @@ public class Client {
         objectMapper = new ObjectMapper();
         startConnection(IP, PORT);
 
-        String line;
-
-        while ((line = in.readLine()) != null) {
-            try {
-                String[] lineParts = line.split(" ", 2);
-                switch (lineParts[0]) {
-                    case "WELCOME" -> handleWelcomeMessage(lineParts[1]);
-                    case "LOGIN_RESP" -> handleLoginResponse(lineParts[1]);
-                }
-            } catch (Exception e) {
-                System.err.println(e);
-            }
-        }
+        awaitWelcomeMessage();
+        logIn();
 
         stopConnection();
     }
 
-    private void handleWelcomeMessage(String jsonString) throws IOException {
-        Message message = objectMapper.readValue(jsonString, Message.class);
-        System.out.println(message);
+    private void awaitWelcomeMessage() throws IOException {
+        String receivedLine;
+        while ((receivedLine = reader.readLine()) != null) {
+            String[] lineParts = receivedLine.split(" ", 2);
+            if ("WELCOME".equals(lineParts[0])) {
+                GenericMessage message = objectMapper.readValue(lineParts[1], GenericMessage.class);
+                System.out.println(message.msg());
+                return;
+            }
+        }
+    }
 
-        assert username == null : "Unexpected welcome message from the server.";
+    private void logIn() throws IOException {
+        boolean loggedIn = false;
+        while (!loggedIn) {
+            System.out.print("Enter your name: ");
+            String userInput = scanner.nextLine();
 
-        login();
+            if (!usernameIsValid(userInput)) {
+                MessageCodePrinter.printMessageFromCode(5001);
+            } else {
+                out.println("LOGIN " + objectMapper.writeValueAsString(new UsernameMessage(userInput)));
+                loggedIn = awaitLoginResponse();
+            }
+        }
     }
 
     private boolean usernameIsValid(String username) {
@@ -86,39 +78,35 @@ public class Client {
         return username.matches("^[a-zA-Z0-9_]+$");
     }
 
-    private void login() {
-        try {
-            System.out.print("Enter your name: ");
+    private boolean awaitLoginResponse() throws IOException {
+        String received;
+        while ((received = reader.readLine()) != null) {
+            String[] lineParts = received.split(" ", 2);
+            if ("LOGIN_RESP".equals(lineParts[0])) {
+                GenericMessage loginResp = objectMapper.readValue(lineParts[1], GenericMessage.class);
 
-            String userInput = scanner.nextLine();
-            boolean validUsername = usernameIsValid(userInput);
-            while (!validUsername) {
-                MessageCodePrinter.printMessageFromCode(5001);
-                System.out.print("Enter your name: ");
-                userInput = scanner.nextLine();
-                validUsername = usernameIsValid(userInput);
+                if (!loginResp.status().equals("OK")) {
+                    MessageCodePrinter.printMessageFromCode(loginResp.code());
+                    return false;
+                } else {
+                    System.out.println("Logged in successfully.");
+                    return true;
+                }
             }
-            username = userInput;
-
-            out.println("LOGIN " + objectMapper.writeValueAsString(new LoginMessage(userInput)));
-        } catch (Exception e) {
-            System.err.println("Error logging in");
         }
+
+        return false;
     }
 
-    private void handleLoginResponse(String jsonString) {
-        assert username != null : "Username is still null after logging in";
+    public void startConnection(String ip, int port) throws IOException {
+        clientSocket = new Socket(ip, port);
+        out = new PrintWriter(clientSocket.getOutputStream(), true);
+        reader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+    }
 
-        try {
-            GenericMessage loginResp = objectMapper.readValue(jsonString, GenericMessage.class);
-
-            if (!loginResp.status().equals("OK")) {
-                MessageCodePrinter.printMessageFromCode(loginResp.code());
-            } else {
-                System.out.printf("Successfully logged in. Welcome %s!\n", username);
-            }
-        } catch (Exception e) {
-            System.err.println("Error logging in");
-        }
+    public void stopConnection() throws IOException {
+        reader.close();
+        out.close();
+        clientSocket.close();
     }
 }
