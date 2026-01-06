@@ -2,7 +2,7 @@ package client;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import shared.messages.LoginMessage;
-import shared.messages.LoginResponseMessage;
+import shared.messages.GenericMessage;
 import shared.messages.Message;
 
 import java.io.BufferedReader;
@@ -93,7 +93,8 @@ public class Client {
             String userInput = scanner.nextLine();
             boolean validUsername = usernameIsValid(userInput);
             while (!validUsername) {
-                System.out.print("Invalid username. Enter your name: ");
+                MessageCodePrinter.printMessageFromCode(5001);
+                System.out.print("Enter your name: ");
                 userInput = scanner.nextLine();
                 validUsername = usernameIsValid(userInput);
             }
@@ -109,13 +110,13 @@ public class Client {
         assert username != null : "Username is still null after logging in";
 
         try {
-            LoginResponseMessage loginResp = objectMapper.readValue(jsonString, LoginResponseMessage.class);
+            GenericMessage loginResp = objectMapper.readValue(jsonString, GenericMessage.class);
 
             if (!loginResp.status().equals("OK")) {
-                throw new Exception("Error logging in");
+                MessageCodePrinter.printMessageFromCode(loginResp.code());
+            } else {
+                System.out.printf("Successfully logged in. Welcome %s!\n", username);
             }
-
-            System.out.printf("Successfully logged in. Welcome %s!\n", username);
         } catch (Exception e) {
             System.err.println("Error logging in");
         }
