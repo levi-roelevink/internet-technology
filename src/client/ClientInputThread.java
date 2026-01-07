@@ -1,10 +1,8 @@
 package client;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import shared.messages.BroadcastRequestMessage;
 
-import java.io.BufferedReader;
 import java.io.PrintWriter;
 import java.util.Scanner;
 
@@ -25,6 +23,7 @@ public class ClientInputThread extends Thread {
     @Override
     public void run() {
         while (true) {
+            // TODO: option menu
             System.out.println("");
             int userInput = getIntBetweenBounds(0, 5);
             scanner.nextLine(); // Consume leftover line
