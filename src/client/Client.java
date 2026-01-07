@@ -17,7 +17,7 @@ public class Client {
     private BufferedReader reader;
     private Scanner scanner;
     private ObjectMapper mapper;
-    private static final int PORT = 1337;
+    private static final int PORT = 3000;
     private static final String IP = "127.0.0.1";
 
     public static void main(String[] args) {

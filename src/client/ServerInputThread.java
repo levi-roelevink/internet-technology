@@ -3,10 +3,7 @@ package client;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import shared.messages.BroadcastMessage;
-import shared.messages.CodeMessage;
-import shared.messages.DisconnectMessage;
-import shared.messages.GenericMessage;
+import shared.messages.*;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -24,6 +21,8 @@ public class ServerInputThread extends Thread {
     private final String PONG_ERROR = "PONG_ERROR";
     private final String DSCN = "DSCN";
     private final String OK = "OK";
+    private final String BYE_RESP = "BYE_RESP";
+    private final String LEFT = "LEFT";
 
     ServerInputThread(PrintWriter writer, BufferedReader reader, ObjectMapper mapper) {
         this.writer = writer;
@@ -44,12 +43,30 @@ public class ServerInputThread extends Thread {
                         case PARSE_ERROR -> MessageCodePrinter.printMessageFromCode(9000);
                         case PING -> handlePing();
                         case PONG_ERROR -> handlePongError(lineParts[1]);
-                        case DSCN ->  handleDisconnect(lineParts[1]);
+                        case DSCN -> handleDisconnect(lineParts[1]);
+                        case BYE_RESP -> handleByeResp(lineParts[1]);
+                        case LEFT -> handleLeft(lineParts[1]);
                     }
                 }
             } catch (IOException e) {
                 System.err.println(e.getMessage());
             }
+        }
+    }
+
+    private void handleLeft(String jsonString) throws JsonProcessingException {
+        UsernameMessage message = mapper.readValue(jsonString, UsernameMessage.class);
+        System.out.println(message.username() + " disconnected.");
+    }
+
+    private void handleByeResp(String jsonString) throws JsonProcessingException {
+        StatusMessage message = mapper.readValue(jsonString, StatusMessage.class);
+        if (OK.equals(message.status())) {
+            System.out.println("Bye");
+            // TODO: how to actually terminate the client application?
+        } else {
+            // No error messages available for this path, hence unknown error
+            MessageCodePrinter.printMessageFromCode(0);
         }
     }
 

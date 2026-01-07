@@ -11,8 +11,9 @@ public class ClientInputThread extends Thread {
     private final ObjectMapper mapper;
     private final Scanner scanner;
 
-    private final int QUIT = 0;
-    private final int BROADCAST_REQ = 1;
+    private final String QUIT = "QUIT";
+    private final String BROADCAST_REQ = "BROADCAST_REQ";
+    private final String BYE = "BYE";
 
     ClientInputThread(PrintWriter writer, ObjectMapper objectMapper) {
         this.writer = writer;
@@ -29,10 +30,15 @@ public class ClientInputThread extends Thread {
             scanner.nextLine(); // Consume leftover line
 
             switch (userInput) {
-                case QUIT -> quit();
-                case BROADCAST_REQ -> handleBroadcastRequest();
+                case 0 -> quit();
+                case 1 -> handleBroadcastRequest();
+                case 2 -> terminateConnection();
             }
         }
+    }
+
+    private void terminateConnection() {
+        writer.println(BYE);
     }
 
     private void handleBroadcastRequest() {
