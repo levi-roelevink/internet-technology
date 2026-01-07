@@ -11,6 +11,7 @@ public interface MessageCodePrinter {
             case 7001 -> System.out.println("Unterminated message.");
             case 8000 -> System.out.println("Pong without ping.");
             case 9000 -> System.out.println("Message couldn't be parsed.");
+            case 9001 -> System.out.println("Unknown command requested.");
             default -> System.out.println("Unknown error.");
         }
     }

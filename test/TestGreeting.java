@@ -34,3 +34,9 @@
 //        assertEquals("Goodbye", resp3);
 //    }
 //}
+
+// PARSE_ERROR
+// writer.println("BROADCAST_REQ {\"aaaa}");
+
+// UNKNOWN_COMMAND
+// writer.println("MSG {\"message\":\"This is an invalid message\"}");
