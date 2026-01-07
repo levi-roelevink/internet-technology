@@ -38,7 +38,6 @@ public class ServerInputThread extends Thread {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     String[] lineParts = line.split(" ", 2);
-                    System.out.println(lineParts[0]);
                     switch (lineParts[0]) {
                         case BROADCAST_RESP -> handleBroadcastResponse(lineParts[1]);
                         case BROADCAST -> handleBroadcast(lineParts[1]);
