@@ -1,7 +1,11 @@
 package server;
 
+import client.MessageCodePrinter;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import shared.messages.CodeMessage;
+import shared.messages.LoginResponseMessage;
+import shared.messages.UsernameMessage;
 import shared.messages.WelcomeMessage;
 
 import java.io.BufferedReader;
@@ -10,6 +14,8 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 
+import static shared.utils.Utils.usernameIsValid;
+
 public class ServerThread extends Thread {
     private final Socket socket;
     private PrintWriter writer;
@@ -17,6 +23,8 @@ public class ServerThread extends Thread {
     private ObjectMapper mapper;
     private final String PONG = "PONG";
     private final String BYE = "BYE";
+    private final String LOGIN = "LOGIN";
+    private String username;
 
     public ServerThread(Socket socket) {
         this.socket = socket;
@@ -29,9 +37,10 @@ public class ServerThread extends Thread {
             mapper = new ObjectMapper();
 
             welcomeClient();
+            awaitLogin();
 
-            PingThread pingThread = new PingThread(socket, writer);
-            pingThread.start();
+//            PingThread pingThread = new PingThread(socket, writer);
+//            pingThread.start();
 
             String inputLine;
             while ((inputLine = reader.readLine()) != null) {
@@ -39,7 +48,7 @@ public class ServerThread extends Thread {
                 String[] lineParts = inputLine.split(" ", 2);
 
                 switch (lineParts[0]) {
-                    case PONG -> pingThread.setAwaitingPong(false);
+//                    case PONG -> pingThread.setAwaitingPong(false);
                     case BYE -> terminateConnection();
                     default -> System.out.println("Unknown command...");
                 }
@@ -55,10 +64,40 @@ public class ServerThread extends Thread {
         }
     }
 
+    private void awaitLogin() throws IOException {
+        boolean loggedIn = false;
+
+        while (!loggedIn) {
+            String inputLine;
+            while ((inputLine = reader.readLine()) != null) {
+                String[] lineParts = inputLine.split(" ", 2);
+
+                if (LOGIN.equals(lineParts[0])) {
+                    UsernameMessage message = mapper.readValue(lineParts[1], UsernameMessage.class);
+
+                    LoginResponseMessage responseMessage;
+
+                    if (!usernameIsValid(message.username())) {
+                        responseMessage = new LoginResponseMessage("ERROR", 5001);
+                    } else {
+                        responseMessage = new LoginResponseMessage("OK");
+                        username = message.username();
+                        loggedIn = true;
+                    }
+
+                    String jsonString = mapper.writeValueAsString(responseMessage);
+                    writer.println("LOGIN_RESP " + jsonString);
+                }
+            }
+        }
+
+        assert usernameIsValid(username) : "Username set is invalid";
+    }
+
     private void welcomeClient() throws JsonProcessingException {
         try {
-            WelcomeMessage wm = new WelcomeMessage("Welcome to the server.");
-            String jsonString = mapper.writeValueAsString(wm);
+            WelcomeMessage message = new WelcomeMessage("Welcome to the server.");
+            String jsonString = mapper.writeValueAsString(message);
 
             writer.println("WELCOME " + jsonString);
         } catch (JsonProcessingException e) {
