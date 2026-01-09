@@ -50,8 +50,7 @@ public class ServerThread extends Thread {
                 String[] lineParts = inputLine.split(" ", 2);
 
                 switch (lineParts[0]) {
-//                    case PONG -> pingThread.setAwaitingPong(false);
-                    case BYE -> terminateConnection();
+                    case PONG -> handlePong();
                     default -> System.out.println("Unknown command...");
                 }
 
@@ -109,10 +108,6 @@ public class ServerThread extends Thread {
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e.getMessage());
         }
-    }
-
-    private void terminateConnection() {
-        System.out.println("BEEP BOOP CAT POOP");
     }
 
     private class PingThread extends Thread {
