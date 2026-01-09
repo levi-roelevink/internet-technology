@@ -41,8 +41,6 @@ public class Client {
         ServerInputThread serverInputThread = new ServerInputThread(writer, reader, mapper);
         clientInputThread.start();
         serverInputThread.start();
-
-//        stopConnection();
     }
 
     private void awaitWelcomeMessage() throws IOException {

@@ -1,5 +1,9 @@
 package server;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import shared.messages.WelcomeMessage;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -9,7 +13,8 @@ import java.net.Socket;
 public class ServerThread extends Thread {
     private final Socket socket;
     private PrintWriter writer;
-    private BufferedReader in;
+    private BufferedReader reader;
+    private ObjectMapper mapper;
     private final String PONG = "PONG";
     private final String BYE = "BYE";
 
@@ -20,13 +25,16 @@ public class ServerThread extends Thread {
     public void run() {
         try {
             writer = new PrintWriter(socket.getOutputStream(), true);
-            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            mapper = new ObjectMapper();
+
+            welcomeClient();
 
             PingThread pingThread = new PingThread(socket, writer);
             pingThread.start();
 
             String inputLine;
-            while ((inputLine = in.readLine()) != null) {
+            while ((inputLine = reader.readLine()) != null) {
                 System.out.printf("Received \"%s\"\n", inputLine);
                 String[] lineParts = inputLine.split(" ", 2);
 
@@ -39,11 +47,22 @@ public class ServerThread extends Thread {
                 writer.println(inputLine);
             }
 
-            in.close();
+            reader.close();
             writer.close();
             socket.close();
         } catch (IOException e) {
             System.err.println(e.getMessage());
+        }
+    }
+
+    private void welcomeClient() throws JsonProcessingException {
+        try {
+            WelcomeMessage wm = new WelcomeMessage("Welcome to the server.");
+            String jsonString = mapper.writeValueAsString(wm);
+
+            writer.println("WELCOME " + jsonString);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e.getMessage());
         }
     }
 
