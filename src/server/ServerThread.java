@@ -1,9 +1,7 @@
 package server;
 
-import client.MessageCodePrinter;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import shared.messages.CodeMessage;
 import shared.messages.LoginResponseMessage;
 import shared.messages.UsernameMessage;
 import shared.messages.WelcomeMessage;
@@ -25,6 +23,7 @@ public class ServerThread extends Thread {
     private final String BYE = "BYE";
     private final String LOGIN = "LOGIN";
     private String username;
+    private PingInfo pingInfo;
 
     public ServerThread(Socket socket) {
         this.socket = socket;
@@ -35,12 +34,15 @@ public class ServerThread extends Thread {
             writer = new PrintWriter(socket.getOutputStream(), true);
             reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             mapper = new ObjectMapper();
+            pingInfo = new PingInfo(socket, writer);
 
             welcomeClient();
             awaitLogin();
+            PingThread pingThread = new PingThread(pingInfo);
+            pingThread.start();
 
-//            PingThread pingThread = new PingThread(socket, writer);
-//            pingThread.start();
+            // TODO: how can I make this pingThread return something to signal that we should disconnect
+            // Also, what is disconnecting
 
             String inputLine;
             while ((inputLine = reader.readLine()) != null) {
@@ -62,6 +64,10 @@ public class ServerThread extends Thread {
         } catch (IOException e) {
             System.err.println(e.getMessage());
         }
+    }
+
+    private void handlePong() {
+        pingInfo.setAwaitingPong(false);
     }
 
     private void awaitLogin() throws IOException {
@@ -110,41 +116,28 @@ public class ServerThread extends Thread {
     }
 
     private class PingThread extends Thread {
-        private final Socket socket;
-        private final PrintWriter writer;
-        private final int PING_DELAY_MS = 10_000;
-        private final String PING = "PING";
-        private boolean awaitingPong = true;
+        private final PingInfo pingInfo;
 
-        PingThread(Socket socket, PrintWriter writer) {
-            this.socket = socket;
-            this.writer = writer;
+        PingThread(PingInfo pingInfo) {
+            this.pingInfo = pingInfo;
         }
 
         public void run() {
             while (true) {
                 try {
-                    sleep(PING_DELAY_MS);
+                    System.out.println("Going to sleep for 10s");
+                    sleep(pingInfo.getPingDelayMs());
 
-                    if (awaitingPong) {
+                    if (pingInfo.isAwaitingPong()) {
                         // TODO: no PONG response within 10_000 MS, hence the client has lost connection
-                        socket.close();
-                        writer.close();
                         throw new Exception("No pong received.");
                     }
-                    writer.println(PING);
+                    System.out.println("Sending PING");
+                    pingInfo.ping();
                 } catch (Exception e) {
                     throw new RuntimeException(e.getMessage());
                 }
             }
-        }
-
-        protected boolean getAwaitingPong() {
-            return awaitingPong;
-        }
-
-        protected void setAwaitingPong(boolean awaiting) {
-            awaitingPong = awaiting;
         }
     }
 }
