@@ -2,9 +2,7 @@ package server;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import shared.messages.LoginResponseMessage;
-import shared.messages.UsernameMessage;
-import shared.messages.WelcomeMessage;
+import shared.messages.*;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -67,8 +65,17 @@ public class ServerThread extends Thread {
         }
     }
 
-    private void handlePong() {
-        pingInfo.receivedPong();
+    private void handlePong() throws JsonProcessingException {
+        try {
+            if (!pingInfo.isAwaitingPong()) {
+                String jsonString = mapper.writeValueAsString(new CodeMessage(8000));
+                writer.println("PONG_ERROR " + jsonString);
+            } else {
+                pingInfo.receivedPong();
+            }
+        } catch (JsonProcessingException e) {
+            System.err.println(e.getMessage());
+        }
     }
 
     private void awaitLogin() throws IOException {
