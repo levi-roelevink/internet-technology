@@ -103,6 +103,6 @@ public class ServerInputThread extends Thread {
 
     private void handleDisconnect(String jsonString) throws JsonProcessingException {
         DisconnectMessage message = mapper.readValue(jsonString, DisconnectMessage.class);
-        MessageCodePrinter.printMessageFromCode(Integer.parseInt(message.reason()));
+        MessageCodePrinter.printMessageFromCode(message.reason());
     }
 }

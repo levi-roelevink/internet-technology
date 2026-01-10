@@ -17,6 +17,7 @@ public class ServerThread extends Thread {
     private PrintWriter writer;
     private BufferedReader reader;
     private ObjectMapper mapper;
+    private final String PING = "PING";
     private final String PONG = "PONG";
     private final String BYE = "BYE";
     private final String LOGIN = "LOGIN";
@@ -32,7 +33,7 @@ public class ServerThread extends Thread {
             writer = new PrintWriter(socket.getOutputStream(), true);
             reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             mapper = new ObjectMapper();
-            pingInfo = new PingInfo(socket, writer);
+            pingInfo = new PingInfo();
 
             welcomeClient();
             awaitLogin();
@@ -50,11 +51,13 @@ public class ServerThread extends Thread {
                     switch (lineParts[0]) {
                         case PONG -> handlePong();
                         default -> System.out.println("Unknown command...");
+                        // TODO: BYE case which also breaks the loop
                     }
 
                     writer.println(inputLine);
                 }
             }
+
 
             reader.close();
             writer.close();
@@ -71,7 +74,7 @@ public class ServerThread extends Thread {
                 String jsonString = mapper.writeValueAsString(new CodeMessage(8000));
                 writer.println("PONG_ERROR " + jsonString);
             } else {
-                pingInfo.receivedPong();
+                pingInfo.setAwaitingPong(false);
             }
         } catch (JsonProcessingException e) {
             System.err.println(e.getMessage());
@@ -133,8 +136,14 @@ public class ServerThread extends Thread {
                     if (pingInfo.isAwaitingPong()) {
                         // No PONG response within 10_000 MS, hence the client has lost connection
                         pingInfo.killConnection();
+
+                        String jsonString = mapper.writeValueAsString(new DisconnectMessage(7000));
+                        writer.println("DSCN " + jsonString);
+                        return;
                     }
-                    pingInfo.ping();
+
+                    pingInfo.setAwaitingPong(true);
+                    writer.println(PING);
                 } catch (Exception e) {
                     System.err.println(e.getMessage());
                 }
