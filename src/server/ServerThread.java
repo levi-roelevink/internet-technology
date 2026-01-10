@@ -38,7 +38,6 @@ public class ServerThread extends Thread {
 
             welcomeClient();
             awaitLogin();
-            System.out.println("Logged in " + username);
 
             PingThread pingThread = new PingThread(pingInfo);
             pingThread.start();
@@ -83,18 +82,17 @@ public class ServerThread extends Thread {
                 if (LOGIN.equals(lineParts[0])) {
                     UsernameMessage message = mapper.readValue(lineParts[1], UsernameMessage.class);
 
-                    LoginResponseMessage responseMessage;
-
                     if (!usernameIsValid(message.username())) {
-                        responseMessage = new LoginResponseMessage("ERROR", 5001);
+                        String jsonString = mapper.writeValueAsString(new LoginResponseMessage("ERROR", 5001));
+                        writer.println("LOGIN_RESP " + jsonString);
                     } else {
-                        responseMessage = new LoginResponseMessage("OK");
                         username = message.username();
                         loggedIn = true;
-                    }
 
-                    String jsonString = mapper.writeValueAsString(responseMessage);
-                    writer.println("LOGIN_RESP " + jsonString);
+                        String jsonString = mapper.writeValueAsString(new LoginResponseMessage("OK"));
+                        writer.println("LOGIN_RESP " + jsonString);
+                        break;
+                    }
                 }
             }
         }
@@ -123,14 +121,12 @@ public class ServerThread extends Thread {
         public void run() {
             while (true) {
                 try {
-                    System.out.println("Going to sleep for 10s");
                     sleep(pingInfo.getPingDelayMs());
 
                     if (pingInfo.isAwaitingPong()) {
                         // No PONG response within 10_000 MS, hence the client has lost connection
                         pingInfo.killConnection();
                     }
-                    System.out.println("Sending PING");
                     pingInfo.ping();
                 } catch (Exception e) {
                     System.err.println(e.getMessage());
