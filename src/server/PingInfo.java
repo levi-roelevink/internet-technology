@@ -9,6 +9,7 @@ public class PingInfo {
     private final int PING_DELAY_MS = 10_000;
     private final String PING = "PING";
     private boolean awaitingPong = true;
+    private boolean connectionAlive = true;
 
     PingInfo(Socket socket, PrintWriter writer) {
         this.socket = socket;
@@ -20,24 +21,20 @@ public class PingInfo {
         awaitingPong = true;
     }
 
-    protected void setAwaitingPong(boolean awaiting) {
-        awaitingPong = awaiting;
+    protected void killConnection() {
+        connectionAlive = false;
     }
 
-    public Socket getSocket() {
-        return socket;
+    protected boolean isConnectionAlive() {
+        return connectionAlive;
     }
 
-    public PrintWriter getWriter() {
-        return writer;
+    protected void receivedPong() {
+        awaitingPong = false;
     }
 
     public int getPingDelayMs() {
         return PING_DELAY_MS;
-    }
-
-    public String getPing() {
-        return PING;
     }
 
     public boolean isAwaitingPong() {

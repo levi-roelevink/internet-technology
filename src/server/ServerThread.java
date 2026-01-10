@@ -38,35 +38,38 @@ public class ServerThread extends Thread {
 
             welcomeClient();
             awaitLogin();
+            System.out.println("Logged in " + username);
+
             PingThread pingThread = new PingThread(pingInfo);
             pingThread.start();
 
-            // TODO: how can I make this pingThread return something to signal that we should disconnect
-            // Also, what is disconnecting
-
             String inputLine;
-            while ((inputLine = reader.readLine()) != null) {
-                System.out.printf("Received \"%s\"\n", inputLine);
-                String[] lineParts = inputLine.split(" ", 2);
 
-                switch (lineParts[0]) {
-                    case PONG -> handlePong();
-                    default -> System.out.println("Unknown command...");
+            while (pingInfo.isConnectionAlive()) {
+                while ((inputLine = reader.readLine()) != null) {
+                    System.out.printf("Received \"%s\"\n", inputLine);
+                    String[] lineParts = inputLine.split(" ", 2);
+
+                    switch (lineParts[0]) {
+                        case PONG -> handlePong();
+                        default -> System.out.println("Unknown command...");
+                    }
+
+                    writer.println(inputLine);
                 }
-
-                writer.println(inputLine);
             }
 
             reader.close();
             writer.close();
             socket.close();
+            // TODO: disconnect / terminate
         } catch (IOException e) {
             System.err.println(e.getMessage());
         }
     }
 
     private void handlePong() {
-        pingInfo.setAwaitingPong(false);
+        pingInfo.receivedPong();
     }
 
     private void awaitLogin() throws IOException {
@@ -124,13 +127,13 @@ public class ServerThread extends Thread {
                     sleep(pingInfo.getPingDelayMs());
 
                     if (pingInfo.isAwaitingPong()) {
-                        // TODO: no PONG response within 10_000 MS, hence the client has lost connection
-                        throw new Exception("No pong received.");
+                        // No PONG response within 10_000 MS, hence the client has lost connection
+                        pingInfo.killConnection();
                     }
                     System.out.println("Sending PING");
                     pingInfo.ping();
                 } catch (Exception e) {
-                    throw new RuntimeException(e.getMessage());
+                    System.err.println(e.getMessage());
                 }
             }
         }
