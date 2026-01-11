@@ -3,9 +3,9 @@ package server;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Map;
 
 import static shared.utils.Utils.usernameIsValid;
 
@@ -31,9 +31,9 @@ public class Server {
         }
     }
 
-    public boolean removeUser(String username) {
+    public void removeUser(String username) {
         PrintWriter writer = users.remove(username);
-        return writer != null;
+        assert !users.containsKey(username) : "Error removing user from hashmap.";
     }
 
     public void addUser(String username, PrintWriter writer) {
@@ -43,12 +43,14 @@ public class Server {
         users.put(username, writer);
     }
 
-    public ArrayList<String> getUsernames() {
-        ArrayList<String> result = new ArrayList<>();
+    public String[] getUsernames() {
+        String[] result = new String[users.size()];
 
-        users.forEach((username, writer) -> {
-            result.add(username);
-        });
+        int count = 0;
+        for (Map.Entry<String, PrintWriter> user : users.entrySet()) {
+            result[count] = user.getKey();
+            count++;
+        }
 
         return result;
     }

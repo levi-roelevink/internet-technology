@@ -9,9 +9,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
+import java.util.*;
 
 import static shared.utils.Utils.usernameIsValid;
 
@@ -26,6 +24,7 @@ public class ServerThread extends Thread {
     private final String BYE = "BYE";
     private final String LOGIN = "LOGIN";
     private final String BROADCAST_REQ = "BROADCAST_REQ";
+    private final String LIST_USERS_REQ = "LIST_USERS_REQ";
     private final String UNKNOWN_COMMAND = "UNKNOWN_COMMAND";
     private String username;
     private PingInfo pingInfo;
@@ -60,6 +59,7 @@ public class ServerThread extends Thread {
                     switch (lineParts[0]) {
                         case PONG -> handlePong();
                         case BROADCAST_REQ -> handleBroadcastRequest(lineParts[1]);
+                        case LIST_USERS_REQ -> handleUserListRequest();
                         case BYE -> handleBye();
                         default -> handleUnknownCommand();
                         // TODO: BYE case which also breaks the loop
@@ -75,6 +75,18 @@ public class ServerThread extends Thread {
             // TODO: disconnect / terminate
         } catch (IOException e) {
             System.err.println(e.getMessage());
+        }
+    }
+
+    private void handleUserListRequest() throws JsonProcessingException {
+        try {
+            String[] otherUsers = Arrays.stream(server.getUsernames()).filter(u -> !u.equals(username)).toArray(String[]::new);
+            String listUserRespJson = mapper.writeValueAsString(new UserListMessage("OK", otherUsers));
+
+            // S -> C: LIST_USERS_RESP {"status":"OK","users":["<username1>", "<username2>",...]}
+            writer.println("LIST_USERS_RESP " + listUserRespJson);
+        } catch (JsonProcessingException e) {
+            // S -> C: LIST_USERS_RESP {"status":"ERROR","code":<error code>}
         }
     }
 
@@ -215,6 +227,8 @@ public class ServerThread extends Thread {
                     if (pingInfo.isAwaitingPong()) {
                         // No PONG response within 10_000 MS, hence the client has lost connection
                         pingInfo.killConnection();
+                        server.removeUser(username);
+                        System.out.println("Removed " + username);
 
                         String jsonString = mapper.writeValueAsString(new DisconnectMessage(7000));
                         writer.println("DSCN " + jsonString);

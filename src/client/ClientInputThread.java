@@ -15,6 +15,7 @@ public class ClientInputThread extends Thread {
     private final String BYE = "BYE";
     private final String MENU = """
             1) Broadcast message
+            2) List online users
             0) Terminate connection
             Select an option:\s""";
 
@@ -33,7 +34,8 @@ public class ClientInputThread extends Thread {
 
             switch (userInput) {
                 case 0 -> terminateConnection();
-                case 1 -> handleBroadcastRequest();
+                case 1 -> broadcastRequest();
+                case 2 -> listUsers();
             }
         }
     }
@@ -42,7 +44,12 @@ public class ClientInputThread extends Thread {
         writer.println(BYE);
     }
 
-    private void handleBroadcastRequest() {
+    private void listUsers() {
+        // C -> S: LIST_USERS_REQ
+        writer.println("LIST_USERS_REQ");
+    }
+
+    private void broadcastRequest() {
         try {
             System.out.print("Enter your message: ");
             String message = scanner.nextLine();

@@ -23,6 +23,7 @@ public class ServerInputThread extends Thread {
     private final String BYE_RESP = "BYE_RESP";
     private final String LEFT = "LEFT";
     private final String JOINED = "JOINED";
+    private final String LIST_USERS_RESP = "LIST_USERS_RESP";
     private final String UNKNOWN_COMMAND = "UNKNOWN_COMMAND";
 
     ServerInputThread(PrintWriter writer, BufferedReader reader, ObjectMapper mapper) {
@@ -48,12 +49,28 @@ public class ServerInputThread extends Thread {
                         case BYE_RESP -> handleByeResp(lineParts[1]);
                         case LEFT -> handleLeft(lineParts[1]);
                         case JOINED -> handleJoined(lineParts[1]);
+                        case LIST_USERS_RESP -> handleListUsersResponse(lineParts[1]);
                         case UNKNOWN_COMMAND -> handleUnknownCommand();
                     }
                 }
             } catch (IOException e) {
                 System.err.println(e.getMessage());
             }
+        }
+    }
+
+    private void handleListUsersResponse(String jsonString) throws JsonProcessingException {
+        try {
+            // If array length is 0 of course print that there are no other users online
+            UserListMessage message = mapper.readValue(jsonString, UserListMessage.class);
+            String[] users = message.users();
+            for (String user: users) {
+                System.out.println(user);
+            }
+
+            // TODO: if status is ERROR, print the code
+        } catch (JsonProcessingException e) {
+            MessageCodePrinter.printMessageFromCode(9000);
         }
     }
 
