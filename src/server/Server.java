@@ -31,6 +31,11 @@ public class Server {
         }
     }
 
+    public boolean removeUser(String username) {
+        PrintWriter writer = users.remove(username);
+        return writer != null;
+    }
+
     public void addUser(String username, PrintWriter writer) {
         if (!usernameIsValid(username)) throw new IllegalArgumentException("Username is invalid.");
         if (writer == null) throw new IllegalArgumentException("Invalid PrintWriter instance provided.");

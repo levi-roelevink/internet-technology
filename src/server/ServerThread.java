@@ -59,6 +59,7 @@ public class ServerThread extends Thread {
                     switch (lineParts[0]) {
                         case PONG -> handlePong();
                         case BROADCAST_REQ -> handleBroadcastRequest(lineParts[1]);
+                        case BYE -> handleBye();
                         default -> System.out.println("Unknown command...");
                         // TODO: BYE case which also breaks the loop
                     }
@@ -72,6 +73,21 @@ public class ServerThread extends Thread {
             socket.close();
             // TODO: disconnect / terminate
         } catch (IOException e) {
+            System.err.println(e.getMessage());
+        }
+    }
+
+    private void handleBye() throws JsonProcessingException {
+        try {
+            String leftJson = mapper.writeValueAsString(new UsernameMessage(username));
+            writeToAllButMe("LEFT " + leftJson);
+
+            String byeRespJson = mapper.writeValueAsString(new StatusMessage("OK"));
+            writer.println("BYE_RESP " + byeRespJson);
+
+            server.removeUser(username);
+            // TODO: actually terminate the server thread
+        } catch (JsonProcessingException e) {
             System.err.println(e.getMessage());
         }
     }
