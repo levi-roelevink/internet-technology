@@ -26,6 +26,7 @@ public class ServerThread extends Thread {
     private final String BYE = "BYE";
     private final String LOGIN = "LOGIN";
     private final String BROADCAST_REQ = "BROADCAST_REQ";
+    private final String UNKNOWN_COMMAND = "UNKNOWN_COMMAND";
     private String username;
     private PingInfo pingInfo;
 
@@ -60,7 +61,7 @@ public class ServerThread extends Thread {
                         case PONG -> handlePong();
                         case BROADCAST_REQ -> handleBroadcastRequest(lineParts[1]);
                         case BYE -> handleBye();
-                        default -> System.out.println("Unknown command...");
+                        default -> handleUnknownCommand();
                         // TODO: BYE case which also breaks the loop
                     }
 
@@ -75,6 +76,11 @@ public class ServerThread extends Thread {
         } catch (IOException e) {
             System.err.println(e.getMessage());
         }
+    }
+
+    private void handleUnknownCommand() {
+        // S -> C: UNKNOWN_COMMAND
+        writer.println(UNKNOWN_COMMAND);
     }
 
     private void handleBye() throws JsonProcessingException {
