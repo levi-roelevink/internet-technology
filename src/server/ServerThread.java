@@ -120,16 +120,19 @@ public class ServerThread extends Thread {
     }
 
     private void informOthersOfJoin() throws JsonProcessingException {
-        HashMap<String, PrintWriter> users = server.getUsers();
+        try {
+            HashMap<String, PrintWriter> users = server.getUsers();
 
-        String jsonString = mapper.writeValueAsString(new UsernameMessage(username));
+            String jsonString = mapper.writeValueAsString(new UsernameMessage(username));
 
-        // S -> others: JOINED {"username":"<username>"}
-        users.forEach((name, writer) -> {
-            if (!name.equals(username)) {
-                writer.println("JOINED " + jsonString);
-            }
-        });
+            users.forEach((name, writer) -> {
+                if (!name.equals(username)) {
+                    writer.println("JOINED " + jsonString);
+                }
+            });
+        } catch (JsonProcessingException e) {
+            System.err.println(e.getMessage());
+        }
     }
 
     private void welcomeClient() throws JsonProcessingException {
@@ -139,7 +142,7 @@ public class ServerThread extends Thread {
 
             writer.println("WELCOME " + jsonString);
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e.getMessage());
+            System.err.println(e.getMessage());
         }
     }
 

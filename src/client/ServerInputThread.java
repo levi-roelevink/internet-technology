@@ -23,6 +23,7 @@ public class ServerInputThread extends Thread {
     private final String OK = "OK";
     private final String BYE_RESP = "BYE_RESP";
     private final String LEFT = "LEFT";
+    private final String JOINED = "JOINED";
     private final String UNKNOWN_COMMAND = "UNKNOWN_COMMAND";
 
     ServerInputThread(PrintWriter writer, BufferedReader reader, ObjectMapper mapper) {
@@ -37,7 +38,6 @@ public class ServerInputThread extends Thread {
             try {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    System.out.println("Received: " + line);
                     String[] lineParts = line.split(" ", 2);
                     switch (lineParts[0]) {
                         case BROADCAST_RESP -> handleBroadcastResponse(lineParts[1]);
@@ -48,6 +48,7 @@ public class ServerInputThread extends Thread {
                         case DSCN -> handleDisconnect(lineParts[1]);
                         case BYE_RESP -> handleByeResp(lineParts[1]);
                         case LEFT -> handleLeft(lineParts[1]);
+                        case JOINED -> handleJoined(lineParts[1]);
                         case UNKNOWN_COMMAND -> handleUnknownCommand();
                     }
                 }
@@ -55,6 +56,11 @@ public class ServerInputThread extends Thread {
                 System.err.println(e.getMessage());
             }
         }
+    }
+
+    private void handleJoined(String jsonString) throws JsonProcessingException {
+        UsernameMessage message = mapper.readValue(jsonString, UsernameMessage.class);
+        System.out.println(message.username() + " joined.");
     }
 
     private void handleUnknownCommand() {
