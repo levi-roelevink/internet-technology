@@ -1,7 +1,6 @@
 package client;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import shared.messages.*;
 
@@ -95,7 +94,7 @@ public class ServerInputThread extends Thread {
 
     private void handleBroadcast(String jsonString) throws JsonProcessingException {
         BroadcastMessage message = mapper.readValue(jsonString, BroadcastMessage.class);
-        System.out.printf("%s: %s", message.username(), message.message());
+        System.out.printf("%s: %s\n", message.username(), message.message());
     }
 
     private void handlePing() {

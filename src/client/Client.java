@@ -1,7 +1,7 @@
 package client;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import shared.messages.LoginResponseMessage;
+import shared.messages.ResponseMessage;
 import shared.messages.UsernameMessage;
 import shared.messages.GenericMessage;
 
@@ -79,7 +79,7 @@ public class Client {
             String[] lineParts = received.split(" ", 2);
             if ("LOGIN_RESP".equals(lineParts[0])) {
 
-                LoginResponseMessage loginResp = mapper.readValue(lineParts[1], LoginResponseMessage.class);
+                ResponseMessage loginResp = mapper.readValue(lineParts[1], ResponseMessage.class);
 
                 if (!loginResp.status().equals("OK")) {
                     MessageCodePrinter.printMessageFromCode(loginResp.code());

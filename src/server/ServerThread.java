@@ -25,6 +25,7 @@ public class ServerThread extends Thread {
     private final String PONG = "PONG";
     private final String BYE = "BYE";
     private final String LOGIN = "LOGIN";
+    private final String BROADCAST_REQ = "BROADCAST_REQ";
     private String username;
     private PingInfo pingInfo;
 
@@ -57,6 +58,7 @@ public class ServerThread extends Thread {
 
                     switch (lineParts[0]) {
                         case PONG -> handlePong();
+                        case BROADCAST_REQ -> handleBroadcastRequest(lineParts[1]);
                         default -> System.out.println("Unknown command...");
                         // TODO: BYE case which also breaks the loop
                     }
@@ -65,13 +67,38 @@ public class ServerThread extends Thread {
                 }
             }
 
-
             reader.close();
             writer.close();
             socket.close();
             // TODO: disconnect / terminate
         } catch (IOException e) {
             System.err.println(e.getMessage());
+        }
+    }
+
+    private void handleBroadcastRequest(String jsonString) throws JsonProcessingException {
+        if (username == null) {
+            // User is not logged in but trying to send a message anyway
+            // S -> C: BROADCAST_RESP {"status": "ERROR","code":<error code>}
+            String errorJson = mapper.writeValueAsString(new ResponseMessage("ERROR", 2000));
+            writer.println("BROADCAST_RESP " + errorJson);
+            return;
+        }
+
+        try {
+            BroadcastRequestMessage broadcastRequestMessage = mapper.readValue(jsonString, BroadcastRequestMessage.class);
+
+            // S -> others: BROADCAST {"username":"<username>","message":"<message>"}
+            String broadcastJson = mapper.writeValueAsString(new BroadcastMessage(broadcastRequestMessage.message(), username));
+            writeToAllButMe("BROADCAST " + broadcastJson);
+
+            // S -> C: BROADCAST_RESP {"status":"OK"}
+            String broadcastRespJson = mapper.writeValueAsString(new ResponseMessage("OK"));
+            writer.println("BROADCAST_RESP " + broadcastRespJson);
+        } catch (JsonProcessingException e) {
+            // S -> C: BROADCAST_RESP {"status": "ERROR","code":<error code>}
+            String errorJson = mapper.writeValueAsString(new ResponseMessage("ERROR", 9000));
+            writer.println("BROADCAST_RESP " + errorJson);
         }
     }
 
@@ -101,14 +128,14 @@ public class ServerThread extends Thread {
 
                     // TODO: check for duplicate username
                     if (!usernameIsValid(message.username())) {
-                        String jsonString = mapper.writeValueAsString(new LoginResponseMessage("ERROR", 5001));
+                        String jsonString = mapper.writeValueAsString(new ResponseMessage("ERROR", 5001));
                         writer.println("LOGIN_RESP " + jsonString);
                     } else {
                         username = message.username();
                         server.addUser(username, writer);
                         loggedIn = true;
 
-                        String jsonString = mapper.writeValueAsString(new LoginResponseMessage("OK"));
+                        String jsonString = mapper.writeValueAsString(new ResponseMessage("OK"));
                         writer.println("LOGIN_RESP " + jsonString);
                         break;
                     }
@@ -121,18 +148,22 @@ public class ServerThread extends Thread {
 
     private void informOthersOfJoin() throws JsonProcessingException {
         try {
-            HashMap<String, PrintWriter> users = server.getUsers();
-
-            String jsonString = mapper.writeValueAsString(new UsernameMessage(username));
-
-            users.forEach((name, writer) -> {
-                if (!name.equals(username)) {
-                    writer.println("JOINED " + jsonString);
-                }
-            });
+            String message = "JOINED " + mapper.writeValueAsString(new UsernameMessage(username));
+            writeToAllButMe(message);
         } catch (JsonProcessingException e) {
             System.err.println(e.getMessage());
         }
+    }
+
+    // The message argument should be formatted like "JOINED {"username":"<username>"}"
+    private void writeToAllButMe(String message) {
+        HashMap<String, PrintWriter> users = server.getUsers();
+
+        users.forEach((name, writer) -> {
+            if (!name.equals(username)) {
+                writer.println(message);
+            }
+        });
     }
 
     private void welcomeClient() throws JsonProcessingException {
