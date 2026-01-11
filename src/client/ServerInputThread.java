@@ -41,7 +41,7 @@ public class ServerInputThread extends Thread {
                     switch (lineParts[0]) {
                         case BROADCAST_RESP -> handleBroadcastResponse(lineParts[1]);
                         case BROADCAST -> handleBroadcast(lineParts[1]);
-                        case PARSE_ERROR -> MessageCodePrinter.printMessageFromCode(9000);
+                        case PARSE_ERROR -> handleParseError();
                         case PING -> handlePing();
                         case PONG_ERROR -> handlePongError(lineParts[1]);
                         case DSCN -> handleDisconnect(lineParts[1]);
@@ -55,6 +55,10 @@ public class ServerInputThread extends Thread {
                 System.err.println(e.getMessage());
             }
         }
+    }
+
+    private void handleParseError() {
+        MessageCodePrinter.printMessageFromCode(9000);
     }
 
     private void handleJoined(String jsonString) throws JsonProcessingException {

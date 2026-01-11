@@ -118,9 +118,8 @@ public class ServerThread extends Thread {
             String broadcastRespJson = mapper.writeValueAsString(new ResponseMessage("OK"));
             writer.println("BROADCAST_RESP " + broadcastRespJson);
         } catch (JsonProcessingException e) {
-            // S -> C: BROADCAST_RESP {"status": "ERROR","code":<error code>}
-            String errorJson = mapper.writeValueAsString(new ResponseMessage("ERROR", 9000));
-            writer.println("BROADCAST_RESP " + errorJson);
+            // S -> C: PARSE_ERROR
+            writer.println("PARSE_ERROR");
         }
     }
 
@@ -144,22 +143,26 @@ public class ServerThread extends Thread {
             String inputLine;
             while ((inputLine = reader.readLine()) != null) {
                 String[] lineParts = inputLine.split(" ", 2);
-
                 if (LOGIN.equals(lineParts[0])) {
-                    UsernameMessage message = mapper.readValue(lineParts[1], UsernameMessage.class);
+                    try {
+                        UsernameMessage message = mapper.readValue(lineParts[1], UsernameMessage.class);
 
-                    // TODO: check for duplicate username
-                    if (!usernameIsValid(message.username())) {
-                        String jsonString = mapper.writeValueAsString(new ResponseMessage("ERROR", 5001));
-                        writer.println("LOGIN_RESP " + jsonString);
-                    } else {
-                        username = message.username();
-                        server.addUser(username, writer);
-                        loggedIn = true;
+                        // TODO: check for duplicate username
+                        if (!usernameIsValid(message.username())) {
+                            String jsonString = mapper.writeValueAsString(new ResponseMessage("ERROR", 5001));
+                            writer.println("LOGIN_RESP " + jsonString);
+                        } else {
+                            username = message.username();
+                            server.addUser(username, writer);
+                            loggedIn = true;
 
-                        String jsonString = mapper.writeValueAsString(new ResponseMessage("OK"));
-                        writer.println("LOGIN_RESP " + jsonString);
-                        break;
+                            String jsonString = mapper.writeValueAsString(new ResponseMessage("OK"));
+                            writer.println("LOGIN_RESP " + jsonString);
+                            break;
+                        }
+                    } catch (IOException e) {
+                        // S -> C: PARSE_ERROR
+                        writer.println("PARSE_ERROR");
                     }
                 }
             }
@@ -190,9 +193,7 @@ public class ServerThread extends Thread {
 
     private void welcomeClient() throws JsonProcessingException {
         try {
-            WelcomeMessage message = new WelcomeMessage("Welcome to the server.");
-            String jsonString = mapper.writeValueAsString(message);
-
+            String jsonString = mapper.writeValueAsString(new WelcomeMessage("Welcome to the server."));
             writer.println("WELCOME " + jsonString);
         } catch (JsonProcessingException e) {
             System.err.println(e.getMessage());
