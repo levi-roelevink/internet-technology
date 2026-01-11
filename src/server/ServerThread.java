@@ -9,6 +9,9 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 
 import static shared.utils.Utils.usernameIsValid;
 
@@ -17,6 +20,7 @@ public class ServerThread extends Thread {
     private PrintWriter writer;
     private BufferedReader reader;
     private ObjectMapper mapper;
+    private Server server;
     private final String PING = "PING";
     private final String PONG = "PONG";
     private final String BYE = "BYE";
@@ -24,11 +28,14 @@ public class ServerThread extends Thread {
     private String username;
     private PingInfo pingInfo;
 
-    public ServerThread(Socket socket) {
+    public ServerThread(Socket socket, Server server) {
         this.socket = socket;
+        this.server = server;
     }
 
     public void run() {
+        assert server != null : "Server instance is null.";
+
         try {
             writer = new PrintWriter(socket.getOutputStream(), true);
             reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -37,6 +44,7 @@ public class ServerThread extends Thread {
 
             welcomeClient();
             awaitLogin();
+            informOthersOfJoin();
 
             PingThread pingThread = new PingThread(pingInfo);
             pingThread.start();
@@ -45,7 +53,6 @@ public class ServerThread extends Thread {
 
             while (pingInfo.isConnectionAlive()) {
                 while ((inputLine = reader.readLine()) != null) {
-                    System.out.printf("Received \"%s\"\n", inputLine);
                     String[] lineParts = inputLine.split(" ", 2);
 
                     switch (lineParts[0]) {
@@ -92,11 +99,13 @@ public class ServerThread extends Thread {
                 if (LOGIN.equals(lineParts[0])) {
                     UsernameMessage message = mapper.readValue(lineParts[1], UsernameMessage.class);
 
+                    // TODO: check for duplicate username
                     if (!usernameIsValid(message.username())) {
                         String jsonString = mapper.writeValueAsString(new LoginResponseMessage("ERROR", 5001));
                         writer.println("LOGIN_RESP " + jsonString);
                     } else {
                         username = message.username();
+                        server.addUser(username, writer);
                         loggedIn = true;
 
                         String jsonString = mapper.writeValueAsString(new LoginResponseMessage("OK"));
@@ -108,6 +117,19 @@ public class ServerThread extends Thread {
         }
 
         assert usernameIsValid(username) : "Username set is invalid";
+    }
+
+    private void informOthersOfJoin() throws JsonProcessingException {
+        HashMap<String, PrintWriter> users = server.getUsers();
+
+        String jsonString = mapper.writeValueAsString(new UsernameMessage(username));
+
+        // S -> others: JOINED {"username":"<username>"}
+        users.forEach((name, writer) -> {
+            if (!name.equals(username)) {
+                writer.println("JOINED " + jsonString);
+            }
+        });
     }
 
     private void welcomeClient() throws JsonProcessingException {
