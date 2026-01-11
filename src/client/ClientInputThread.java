@@ -11,9 +11,12 @@ public class ClientInputThread extends Thread {
     private final ObjectMapper mapper;
     private final Scanner scanner;
 
-    private final String QUIT = "QUIT";
     private final String BROADCAST_REQ = "BROADCAST_REQ";
     private final String BYE = "BYE";
+    private final String MENU = """
+            1) Broadcast message
+            0) Terminate connection
+            Select an option:\s""";
 
     ClientInputThread(PrintWriter writer, ObjectMapper objectMapper) {
         this.writer = writer;
@@ -24,15 +27,13 @@ public class ClientInputThread extends Thread {
     @Override
     public void run() {
         while (true) {
-            // TODO: option menu
-            System.out.println("");
+            System.out.print(MENU);
             int userInput = getIntBetweenBounds(0, 5);
             scanner.nextLine(); // Consume leftover line
 
             switch (userInput) {
-                case 0 -> quit();
+                case 0 -> terminateConnection();
                 case 1 -> handleBroadcastRequest();
-                case 2 -> terminateConnection();
             }
         }
     }
@@ -58,7 +59,9 @@ public class ClientInputThread extends Thread {
     }
 
     private void quit() {
-        // TODO: send logout request to server
+        // Send logout request to server
+        writer.println(BYE);
+
         System.out.println("Bye.");
         System.exit(0);
     }

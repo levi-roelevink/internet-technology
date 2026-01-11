@@ -1,6 +1,7 @@
 package client;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import shared.messages.ResponseMessage;
 import shared.messages.UsernameMessage;
 import shared.messages.GenericMessage;
 
@@ -10,6 +11,8 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.Scanner;
+
+import static shared.utils.Utils.usernameIsValid;
 
 public class Client {
     private Socket clientSocket;
@@ -41,8 +44,6 @@ public class Client {
         ServerInputThread serverInputThread = new ServerInputThread(writer, reader, mapper);
         clientInputThread.start();
         serverInputThread.start();
-
-//        stopConnection();
     }
 
     private void awaitWelcomeMessage() throws IOException {
@@ -72,23 +73,13 @@ public class Client {
         }
     }
 
-    private boolean usernameIsValid(String username) {
-        if (username == null || username.isBlank()) return false;
-
-        // Length must be between 3 and 14 characters
-        int length = username.length();
-        if (length < 3 || length > 14) return false;
-
-        // Username may only consist of characters, numbers, and underscores
-        return username.matches("^[a-zA-Z0-9_]+$");
-    }
-
     private boolean awaitLoginResponse() throws IOException {
         String received;
         while ((received = reader.readLine()) != null) {
             String[] lineParts = received.split(" ", 2);
             if ("LOGIN_RESP".equals(lineParts[0])) {
-                GenericMessage loginResp = mapper.readValue(lineParts[1], GenericMessage.class);
+
+                ResponseMessage loginResp = mapper.readValue(lineParts[1], ResponseMessage.class);
 
                 if (!loginResp.status().equals("OK")) {
                     MessageCodePrinter.printMessageFromCode(loginResp.code());

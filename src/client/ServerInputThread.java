@@ -1,7 +1,6 @@
 package client;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import shared.messages.*;
 
@@ -23,6 +22,7 @@ public class ServerInputThread extends Thread {
     private final String OK = "OK";
     private final String BYE_RESP = "BYE_RESP";
     private final String LEFT = "LEFT";
+    private final String JOINED = "JOINED";
     private final String UNKNOWN_COMMAND = "UNKNOWN_COMMAND";
 
     ServerInputThread(PrintWriter writer, BufferedReader reader, ObjectMapper mapper) {
@@ -47,6 +47,7 @@ public class ServerInputThread extends Thread {
                         case DSCN -> handleDisconnect(lineParts[1]);
                         case BYE_RESP -> handleByeResp(lineParts[1]);
                         case LEFT -> handleLeft(lineParts[1]);
+                        case JOINED -> handleJoined(lineParts[1]);
                         case UNKNOWN_COMMAND -> handleUnknownCommand();
                     }
                 }
@@ -54,6 +55,11 @@ public class ServerInputThread extends Thread {
                 System.err.println(e.getMessage());
             }
         }
+    }
+
+    private void handleJoined(String jsonString) throws JsonProcessingException {
+        UsernameMessage message = mapper.readValue(jsonString, UsernameMessage.class);
+        System.out.println(message.username() + " joined.");
     }
 
     private void handleUnknownCommand() {
@@ -88,7 +94,7 @@ public class ServerInputThread extends Thread {
 
     private void handleBroadcast(String jsonString) throws JsonProcessingException {
         BroadcastMessage message = mapper.readValue(jsonString, BroadcastMessage.class);
-        System.out.printf("%s: %s", message.username(), message.message());
+        System.out.printf("%s: %s\n", message.username(), message.message());
     }
 
     private void handlePing() {
@@ -102,6 +108,6 @@ public class ServerInputThread extends Thread {
 
     private void handleDisconnect(String jsonString) throws JsonProcessingException {
         DisconnectMessage message = mapper.readValue(jsonString, DisconnectMessage.class);
-        MessageCodePrinter.printMessageFromCode(Integer.parseInt(message.reason()));
+        MessageCodePrinter.printMessageFromCode(message.reason());
     }
 }

@@ -1,21 +1,25 @@
 package server;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
-import java.net.Socket;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+
+import static shared.utils.Utils.usernameIsValid;
 
 public class Server {
     private final static int PORT = 3000;
     private ServerSocket serverSocket;
+    private final HashMap<String, PrintWriter> users = new HashMap<>();
 
     public void start(int port) throws IOException {
         serverSocket = new ServerSocket(port);
 
         while (true) {
-            new ServerThread(serverSocket.accept()).start();
+            // Wait for an incoming client-connection request (blocking)
+            new ServerThread(serverSocket.accept(), this).start();
         }
     }
 
@@ -27,36 +31,28 @@ public class Server {
         }
     }
 
-    private static class ServerThread extends Thread {
-        private Socket clientSocket;
-        private PrintWriter out;
-        private BufferedReader in;
+    public void addUser(String username, PrintWriter writer) {
+        if (!usernameIsValid(username)) throw new IllegalArgumentException("Username is invalid.");
+        if (writer == null) throw new IllegalArgumentException("Invalid PrintWriter instance provided.");
 
-        public ServerThread(Socket socket) {
-            this.clientSocket = socket;
-        }
+        users.put(username, writer);
+    }
 
-        public void run() {
-            try {
-                out = new PrintWriter(clientSocket.getOutputStream(), true);
-                in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+    public ArrayList<String> getUsernames() {
+        ArrayList<String> result = new ArrayList<>();
 
-                String inputLine;
-                while ((inputLine = in.readLine()) != null) {
-                    System.out.printf("Received \"%s\"\n", inputLine);
-                    if (".".equals(inputLine)) {
-                        out.println("Goodbye");
-                        break;
-                    }
-                    out.println(inputLine);
-                }
+        users.forEach((username, writer) -> {
+            result.add(username);
+        });
 
-                in.close();
-                out.close();
-                clientSocket.close();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
+        return result;
+    }
+
+    public Collection<PrintWriter> getPrintWriters() {
+        return users.values();
+    }
+
+    public HashMap<String, PrintWriter> getUsers() {
+        return users;
     }
 }

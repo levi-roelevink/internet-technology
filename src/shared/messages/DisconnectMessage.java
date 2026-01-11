@@ -1,4 +1,4 @@
 package shared.messages;
 
-public record DisconnectMessage(String reason) {
+public record DisconnectMessage(int reason) {
 }
