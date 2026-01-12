@@ -25,6 +25,7 @@ public class ServerThread extends Thread {
     private final String LOGIN = "LOGIN";
     private final String BROADCAST_REQ = "BROADCAST_REQ";
     private final String LIST_USERS_REQ = "LIST_USERS_REQ";
+    private final String PRIVATE_MESSAGE_REQ = "PRIVATE_MESSAGE_REQ";
     private final String UNKNOWN_COMMAND = "UNKNOWN_COMMAND";
     private String username;
     private PingInfo pingInfo;
@@ -60,6 +61,7 @@ public class ServerThread extends Thread {
                         case PONG -> handlePong();
                         case BROADCAST_REQ -> handleBroadcastRequest(lineParts[1]);
                         case LIST_USERS_REQ -> handleUserListRequest();
+                        case PRIVATE_MESSAGE_REQ -> handlePrivateMessageRequest(lineParts[1]);
                         case BYE -> handleBye();
                         default -> handleUnknownCommand();
                         // TODO: BYE case which also breaks the loop
@@ -78,6 +80,34 @@ public class ServerThread extends Thread {
         }
     }
 
+    private void handlePrivateMessageRequest(String jsonString) throws JsonProcessingException {
+        try {
+            PrivateMessage message = mapper.readValue(jsonString, PrivateMessage.class);
+
+            if (username == null) {
+                String respMsgJson = mapper.writeValueAsString(new ResponseMessage("ERROR", 2000));
+                writer.println("PRIVATE_MESSAGE_RESP " + respMsgJson);
+                return;
+            }
+
+            HashMap<String, PrintWriter> users = server.getUsers();
+            PrintWriter recipientWriter = users.get(message.username());
+            if (recipientWriter == null) {
+                String respMsgJson = mapper.writeValueAsString(new ResponseMessage("ERROR", 5000));
+                writer.println("PRIVATE_MESSAGE_RESP " + respMsgJson);
+                return;
+            }
+
+            String privateMessageJson = mapper.writeValueAsString(new PrivateMessage(username, message.message()));
+            recipientWriter.println("PRIVATE_MESSAGE " + privateMessageJson);
+
+            String respMsgJson = mapper.writeValueAsString(new ResponseMessage("OK"));
+            writer.println("PRIVATE_MESSAGE_RESP " + respMsgJson);
+        } catch (JsonProcessingException e) {
+            writer.println("PARSE_ERROR");
+        }
+    }
+
     private void handleUserListRequest() throws JsonProcessingException {
         try {
             if (username == null) {
@@ -93,7 +123,7 @@ public class ServerThread extends Thread {
             // S -> C: LIST_USERS_RESP {"status":"OK","users":["<username1>", "<username2>",...]}
             writer.println("LIST_USERS_RESP " + listUserRespJson);
         } catch (JsonProcessingException e) {
-            System.err.println(e.getMessage());
+            writer.println("PARSE_ERROR");
         }
     }
 
@@ -113,7 +143,7 @@ public class ServerThread extends Thread {
             server.removeUser(username);
             // TODO: actually terminate the server thread
         } catch (JsonProcessingException e) {
-            System.err.println(e.getMessage());
+            writer.println("PARSE_ERROR");
         }
     }
 

@@ -24,6 +24,8 @@ public class ServerInputThread extends Thread {
     private final String LEFT = "LEFT";
     private final String JOINED = "JOINED";
     private final String LIST_USERS_RESP = "LIST_USERS_RESP";
+    private final String PRIVATE_MESSAGE_RESP = "PRIVATE_MESSAGE_RESP";
+    private final String PRIVATE_MESSAGE = "PRIVATE_MESSAGE";
     private final String UNKNOWN_COMMAND = "UNKNOWN_COMMAND";
 
     ServerInputThread(PrintWriter writer, BufferedReader reader, ObjectMapper mapper) {
@@ -50,12 +52,32 @@ public class ServerInputThread extends Thread {
                         case LEFT -> handleLeft(lineParts[1]);
                         case JOINED -> handleJoined(lineParts[1]);
                         case LIST_USERS_RESP -> handleListUsersResponse(lineParts[1]);
+                        case PRIVATE_MESSAGE_RESP -> handlePrivateMessageResp(lineParts[1]);
+                        case PRIVATE_MESSAGE -> handlePrivateMessage(lineParts[1]);
                         case UNKNOWN_COMMAND -> handleUnknownCommand();
                     }
                 }
             } catch (IOException e) {
                 System.err.println(e.getMessage());
             }
+        }
+    }
+
+    private void handlePrivateMessage(String jsonString) throws JsonProcessingException {
+
+    }
+
+    private void handlePrivateMessageResp(String jsonString) throws JsonProcessingException {
+        try {
+            ResponseMessage message = mapper.readValue(jsonString, ResponseMessage.class);
+
+            if (OK.equals(message.status())) {
+                System.out.println("Private message sent.");
+            } else {
+                MessageCodePrinter.printMessageFromCode(message.code());
+            }
+        } catch (JsonProcessingException e) {
+            System.err.println(e.getMessage());
         }
     }
 
