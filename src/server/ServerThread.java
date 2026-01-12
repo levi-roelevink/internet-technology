@@ -80,13 +80,20 @@ public class ServerThread extends Thread {
 
     private void handleUserListRequest() throws JsonProcessingException {
         try {
+            if (username == null) {
+                String errorRespJson = mapper.writeValueAsString(new ResponseMessage("ERROR", 2000));
+                // S -> C: LIST_USERS_RESP {"status":"ERROR","code":<error code>}
+                writer.println("LIST_USERS_RESP " + errorRespJson);
+                return;
+            }
+
             String[] otherUsers = Arrays.stream(server.getUsernames()).filter(u -> !u.equals(username)).toArray(String[]::new);
             String listUserRespJson = mapper.writeValueAsString(new UserListMessage("OK", otherUsers));
 
             // S -> C: LIST_USERS_RESP {"status":"OK","users":["<username1>", "<username2>",...]}
             writer.println("LIST_USERS_RESP " + listUserRespJson);
         } catch (JsonProcessingException e) {
-            // S -> C: LIST_USERS_RESP {"status":"ERROR","code":<error code>}
+            System.err.println(e.getMessage());
         }
     }
 

@@ -61,14 +61,21 @@ public class ServerInputThread extends Thread {
 
     private void handleListUsersResponse(String jsonString) throws JsonProcessingException {
         try {
-            // If array length is 0 of course print that there are no other users online
             UserListMessage message = mapper.readValue(jsonString, UserListMessage.class);
-            String[] users = message.users();
-            for (String user: users) {
-                System.out.println(user);
-            }
 
-            // TODO: if status is ERROR, print the code
+            if (!OK.equals(message.status())) {
+                MessageCodePrinter.printMessageFromCode(2000);
+            } else {
+                String[] users = message.users();
+                // If array length is 0 of course print that there are no other users online
+                if (users.length == 0) {
+                    System.out.println("No online users currently, you're all alone.");
+                } else {
+                    for (String user : users) {
+                        System.out.println("-" + user);
+                    }
+                }
+            }
         } catch (JsonProcessingException e) {
             MessageCodePrinter.printMessageFromCode(9000);
         }
