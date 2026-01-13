@@ -71,6 +71,7 @@ public class ClientInputThread extends Thread {
 
             String jsonString = mapper.writeValueAsString(new FileTransferRequest(recipient, fileName, fileSize, uuidString, checksum));
             writer.println("FILE_TRANSFER_REQ " + jsonString);
+
         } catch (IOException | NoSuchAlgorithmException e) {
             System.err.println(e.getMessage());
         }

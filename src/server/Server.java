@@ -43,6 +43,10 @@ public class Server {
         users.put(username, writer);
     }
 
+    public PrintWriter getUser(String username) {
+        return users.get(username);
+    }
+
     public String[] getUsernames() {
         String[] result = new String[users.size()];
 

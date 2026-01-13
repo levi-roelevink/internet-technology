@@ -11,7 +11,7 @@ import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.*;
 
-import static shared.utils.Utils.usernameIsValid;
+import static shared.utils.UsernameValidation.usernameIsValid;
 
 public class ServerThread extends Thread {
     private final Socket socket;
@@ -26,6 +26,8 @@ public class ServerThread extends Thread {
     private final String BROADCAST_REQ = "BROADCAST_REQ";
     private final String LIST_USERS_REQ = "LIST_USERS_REQ";
     private final String PRIVATE_MESSAGE_REQ = "PRIVATE_MESSAGE_REQ";
+    private final String FILE_TRANSFER_REQ = "FILE_TRANSFER_REQ";
+    private final String FILE_TRANSFER_RESP = "FILE_TRANSFER_RESP";
     private final String UNKNOWN_COMMAND = "UNKNOWN_COMMAND";
     private String username;
     private PingInfo pingInfo;
@@ -62,6 +64,8 @@ public class ServerThread extends Thread {
                         case BROADCAST_REQ -> handleBroadcastRequest(lineParts[1]);
                         case LIST_USERS_REQ -> handleUserListRequest();
                         case PRIVATE_MESSAGE_REQ -> handlePrivateMessageRequest(lineParts[1]);
+                        case FILE_TRANSFER_REQ -> handleFileTransferRequest(lineParts[1]);
+                        case FILE_TRANSFER_RESP -> handleFileTransferResponse(lineParts[1]);
                         case BYE -> handleBye();
                         default -> handleUnknownCommand();
                         // TODO: BYE case which also breaks the loop
@@ -77,6 +81,39 @@ public class ServerThread extends Thread {
             // TODO: disconnect / terminate
         } catch (IOException e) {
             System.err.println(e.getMessage());
+        }
+    }
+
+    private void handleFileTransferResponse(String jsonString) throws JsonProcessingException {
+        try {
+            FileTransferResponse message = mapper.readValue(jsonString, FileTransferResponse.class);
+
+            // S -> sender: FILE_TRANSFER_RESP {"status":"OK","username":"<username>","code":0/1}
+
+        }
+    }
+
+    private void handleFileTransferRequest(String jsonString) throws JsonProcessingException {
+        int errorCode = -1;
+
+        try {
+            FileTransferRequest request = mapper.readValue(jsonString, FileTransferRequest.class);
+
+            PrintWriter recipient = server.getUser(request.username());
+            if (username == null) {
+                errorCode = 2000;
+            } else if (recipient == null) {
+                errorCode = 5000;
+            }
+
+            if (errorCode != -1) {
+                // TODO: S -> C: FILE_TRANSFER_RESP {"status":"ERROR","code":<error code>}
+            } else {
+                String forwardReqJson = mapper.writeValueAsString(new FileTransferRequest(username, request.fileName(), request.fileSize(), request.id(), request.checksum()));
+                recipient.println("FILE_TRANSFER_REQ " + forwardReqJson);
+            }
+        } catch (JsonProcessingException e) {
+            writer.println("PARSE_ERROR");
         }
     }
 
