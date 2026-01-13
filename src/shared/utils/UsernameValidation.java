@@ -1,6 +1,6 @@
 package shared.utils;
 
-public class Utils {
+public class UsernameValidation {
     public static boolean usernameIsValid(String username) {
         if (username == null || username.isBlank()) return false;
 

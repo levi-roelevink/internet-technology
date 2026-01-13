@@ -12,7 +12,7 @@ import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.Scanner;
 
-import static shared.utils.Utils.usernameIsValid;
+import static shared.utils.UsernameValidation.usernameIsValid;
 
 public class Client {
     private Socket clientSocket;
@@ -40,7 +40,7 @@ public class Client {
         awaitWelcomeMessage();
         logIn();
 
-        ClientInputThread clientInputThread = new ClientInputThread(writer, mapper);
+        ClientInputThread clientInputThread = new ClientInputThread(clientSocket, writer, mapper);
         ServerInputThread serverInputThread = new ServerInputThread(writer, reader, mapper);
         clientInputThread.start();
         serverInputThread.start();

@@ -7,7 +7,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
-import static shared.utils.Utils.usernameIsValid;
+import static shared.utils.UsernameValidation.usernameIsValid;
 
 public class Server {
     private final static int PORT = 3000;

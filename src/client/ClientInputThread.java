@@ -3,12 +3,23 @@ package client;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import shared.messages.BroadcastRequestMessage;
+import shared.messages.FileTransferRequest;
 import shared.messages.PrivateMessage;
+import shared.utils.MD5Checksum;
 
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.PrintWriter;
+import java.net.Socket;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.security.NoSuchAlgorithmException;
 import java.util.Scanner;
+import java.util.UUID;
 
 public class ClientInputThread extends Thread {
+    private final Socket socket;
     private final PrintWriter writer;
     private final ObjectMapper mapper;
     private final Scanner scanner;
@@ -21,7 +32,8 @@ public class ClientInputThread extends Thread {
             0) Terminate connection
             Select an option:\s""";
 
-    ClientInputThread(PrintWriter writer, ObjectMapper objectMapper) {
+    ClientInputThread(Socket socket, PrintWriter writer, ObjectMapper objectMapper) {
+        this.socket = socket;
         this.writer = writer;
         this.mapper = objectMapper;
         this.scanner = new Scanner(System.in);
@@ -39,7 +51,40 @@ public class ClientInputThread extends Thread {
                 case 1 -> broadcastRequest();
                 case 2 -> listUsers();
                 case 3 -> privateMessage();
+                case 4 -> fileTransferRequest();
             }
+        }
+    }
+
+    private void fileTransferRequest() {
+        String recipient = promptForInput("User to transfer file to: ");
+        String fileName = promptForInput("File name: ");
+
+        try {
+            Path path = Paths.get(fileName);
+            long fileSize = Files.size(path);
+
+            String uuidString = UUID.randomUUID().toString();
+
+            MD5Checksum checksumGenerator = new MD5Checksum();
+            String checksum = checksumGenerator.getFileChecksum(fileName);
+
+            String jsonString = mapper.writeValueAsString(new FileTransferRequest(recipient, fileName, fileSize, uuidString, checksum));
+            writer.println("FILE_TRANSFER_REQ " + jsonString);
+        } catch (IOException | NoSuchAlgorithmException e) {
+            System.err.println(e.getMessage());
+        }
+    }
+
+    // TODO: this should probably happen on a new thread so that other chat functionality remains available
+    // Unless this happens quick
+    private void fileTransfer() {
+        try {
+            FileInputStream fileInputStream = new FileInputStream("docs/test.txt");
+            long bytesTransferred = fileInputStream.transferTo(socket.getOutputStream());
+
+        } catch (IOException e) {
+            System.err.println(e.getMessage());
         }
     }
 
