@@ -53,7 +53,7 @@ public class ClientInputThread extends Thread {
             String message = promptForInput("Enter your message: ");
 
             String jsonString = mapper.writeValueAsString(new PrivateMessage(user, message));
-            writer.println("PRIVATE_MESSAGE_REQUEST " + jsonString);
+            writer.println("PRIVATE_MESSAGE_REQ " + jsonString);
         } catch (JsonProcessingException e) {
             System.err.println(e.getMessage());
         }

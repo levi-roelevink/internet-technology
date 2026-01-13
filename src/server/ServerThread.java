@@ -98,9 +98,11 @@ public class ServerThread extends Thread {
                 return;
             }
 
+            // Route message to recipient
             String privateMessageJson = mapper.writeValueAsString(new PrivateMessage(username, message.message()));
             recipientWriter.println("PRIVATE_MESSAGE " + privateMessageJson);
 
+            // Send confirmation to sender
             String respMsgJson = mapper.writeValueAsString(new ResponseMessage("OK"));
             writer.println("PRIVATE_MESSAGE_RESP " + respMsgJson);
         } catch (JsonProcessingException e) {

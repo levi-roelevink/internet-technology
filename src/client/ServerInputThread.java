@@ -64,7 +64,14 @@ public class ServerInputThread extends Thread {
     }
 
     private void handlePrivateMessage(String jsonString) throws JsonProcessingException {
+        try {
+            PrivateMessage message = mapper.readValue(jsonString, PrivateMessage.class);
 
+            System.out.printf("Private message from %s: %s\n", message.username(), message.message());
+        } catch (JsonProcessingException e) {
+            // TODO: how else could this exception be handled?
+            System.err.println(e.getMessage());
+        }
     }
 
     private void handlePrivateMessageResp(String jsonString) throws JsonProcessingException {
