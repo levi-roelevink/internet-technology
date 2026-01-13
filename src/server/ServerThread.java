@@ -88,8 +88,22 @@ public class ServerThread extends Thread {
         try {
             FileTransferResponse message = mapper.readValue(jsonString, FileTransferResponse.class);
 
-            // S -> sender: FILE_TRANSFER_RESP {"status":"OK","username":"<username>","code":0/1}
+            // Send to message.username()'s PrintWriter
+            PrintWriter senderWriter = server.getUser(message.username());
+            if (senderWriter == null) {
+                // TODO: error code 2000
+                return;
+            }
 
+            String fileTransferRespJson = mapper.writeValueAsString(new FileTransferResponse(username, message.code()));
+            // S -> sender: FILE_TRANSFER_RESP {"status":"OK","username":"<username>","code":0/1}
+            senderWriter.println("FILE_TRANSFER_RESP " + fileTransferRespJson);
+
+            if (message.code() == 1) {
+                // TODO: open a new socket for both clients
+            }
+        } catch (JsonProcessingException e) {
+            writer.println("PARSE_ERROR");
         }
     }
 
