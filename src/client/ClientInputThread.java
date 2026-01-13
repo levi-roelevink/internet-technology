@@ -1,7 +1,9 @@
 package client;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import shared.messages.BroadcastRequestMessage;
+import shared.messages.PrivateMessage;
 
 import java.io.PrintWriter;
 import java.util.Scanner;
@@ -11,11 +13,11 @@ public class ClientInputThread extends Thread {
     private final ObjectMapper mapper;
     private final Scanner scanner;
 
-    private final String BROADCAST_REQ = "BROADCAST_REQ";
     private final String BYE = "BYE";
     private final String MENU = """
             1) Broadcast message
             2) List online users
+            3) Private message
             0) Terminate connection
             Select an option:\s""";
 
@@ -36,6 +38,7 @@ public class ClientInputThread extends Thread {
                 case 0 -> terminateConnection();
                 case 1 -> broadcastRequest();
                 case 2 -> listUsers();
+                case 3 -> privateMessage();
             }
         }
     }
@@ -44,21 +47,38 @@ public class ClientInputThread extends Thread {
         writer.println(BYE);
     }
 
+    private void privateMessage() {
+        try {
+            String user = promptForInput("User to message: ");
+            String message = promptForInput("Enter your message: ");
+
+            String jsonString = mapper.writeValueAsString(new PrivateMessage(user, message));
+            writer.println("PRIVATE_MESSAGE_REQ " + jsonString);
+        } catch (JsonProcessingException e) {
+            System.err.println(e.getMessage());
+        }
+    }
+
     private void listUsers() {
         // C -> S: LIST_USERS_REQ
         writer.println("LIST_USERS_REQ");
     }
 
+    private String promptForInput(String prompt) {
+        System.out.print(prompt);
+        String input = scanner.nextLine();
+
+        while (input == null || input.isBlank()) {
+            System.out.print(prompt);
+            input = scanner.nextLine();
+        }
+
+        return input;
+    }
+
     private void broadcastRequest() {
         try {
-            System.out.print("Enter your message: ");
-            String message = scanner.nextLine();
-
-            while (message == null || message.isBlank()) {
-                System.out.print("Enter your message: ");
-                message = scanner.nextLine();
-            }
-
+            String message = promptForInput("Enter your message: ");
             writer.println("BROADCAST_REQ " + mapper.writeValueAsString(new BroadcastRequestMessage(message)));
         } catch (Exception e) {
             MessageCodePrinter.printMessageFromCode(0);
