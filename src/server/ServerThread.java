@@ -98,10 +98,6 @@ public class ServerThread extends Thread {
             String fileTransferRespJson = mapper.writeValueAsString(new FileTransferResponse(username, message.code()));
             // S -> sender: FILE_TRANSFER_RESP {"status":"OK","username":"<username>","code":0/1}
             senderWriter.println("FILE_TRANSFER_RESP " + fileTransferRespJson);
-
-            if (message.code() == 1) {
-                // TODO: open a new socket for both clients
-            }
         } catch (JsonProcessingException e) {
             writer.println("PARSE_ERROR");
         }
@@ -123,7 +119,7 @@ public class ServerThread extends Thread {
             if (errorCode != -1) {
                 // TODO: S -> C: FILE_TRANSFER_RESP {"status":"ERROR","code":<error code>}
             } else {
-                String forwardReqJson = mapper.writeValueAsString(new FileTransferRequest(username, request.fileName(), request.fileSize(), request.id(), request.checksum()));
+                String forwardReqJson = mapper.writeValueAsString(new FileTransferRequest(username, request.file()));
                 recipient.println("FILE_TRANSFER_REQ " + forwardReqJson);
             }
         } catch (JsonProcessingException e) {
