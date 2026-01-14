@@ -73,6 +73,7 @@ public class ServerInputThread extends Thread {
             FileTransferRequest message = mapper.readValue(jsonString, FileTransferRequest.class);
 
             int index = existingFileTransferRequest(message.username());
+            // TODO: this should be a set I think
             if (index != -1) {
                 // Replace existing request with new request
                 fileTransferRequests.remove(index);
