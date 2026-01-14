@@ -10,12 +10,13 @@ import java.util.Map;
 import static shared.utils.UsernameValidation.usernameIsValid;
 
 public class Server {
-    private final static int PORT = 3000;
     private ServerSocket serverSocket;
+    private FileTransferSetupThread fileTransferSetupThread;
     private final HashMap<String, PrintWriter> users = new HashMap<>();
 
-    public void start(int port) throws IOException {
-        serverSocket = new ServerSocket(port);
+    public void start() throws IOException {
+        serverSocket = new ServerSocket(1337);
+        fileTransferSetupThread = new FileTransferSetupThread(1338);
 
         while (true) {
             // Wait for an incoming client-connection request (blocking)
@@ -26,7 +27,7 @@ public class Server {
     public static void main(String[] args) throws IOException {
         Server server = new Server();
         while (true) {
-            server.start(PORT);
+            server.start();
             server.serverSocket.close();
         }
     }

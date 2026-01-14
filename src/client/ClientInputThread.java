@@ -69,7 +69,7 @@ public class ClientInputThread extends Thread {
             MD5Checksum checksumGenerator = new MD5Checksum();
             String checksum = checksumGenerator.getFileChecksum(fileName);
 
-            String jsonString = mapper.writeValueAsString(new FileTransferRequest(recipient, fileName, fileSize, uuidString, checksum));
+            String jsonString = mapper.writeValueAsString(new FileTransferRequest(recipient, new File(uuidString, fileName, fileSize, checksum)));
             writer.println("FILE_TRANSFER_REQ " + jsonString);
 
         } catch (IOException | NoSuchAlgorithmException e) {
