@@ -9,10 +9,25 @@ public class PromptUser {
         int result = scanner.nextInt();
 
         while (result < lowerBound || result > upperBound) {
-            System.out.printf("Input must be between %d and %d: ", lowerBound, upperBound);
+            System.out.printf("Please enter a value between %d and %d: ", lowerBound, upperBound);
             result = scanner.nextInt();
         }
 
+        // Consume leftover newline character
+        scanner.nextLine();
+
         return result;
+    }
+
+    public static String promptForStringInput(String prompt) {
+        System.out.print(prompt);
+        String input = scanner.nextLine();
+
+        while (input == null || input.isBlank()) {
+            System.out.print(prompt);
+            input = scanner.nextLine();
+        }
+
+        return input;
     }
 }

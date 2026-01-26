@@ -1,18 +1,18 @@
 package shared.utils;
 
+import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
-public class MD5Checksum {
+public interface ChecksumGenerator {
 
-    public String getFileChecksum(String filePath) throws NoSuchAlgorithmException, IOException {
+    static String getFileChecksum(File file) throws NoSuchAlgorithmException, IOException {
         MessageDigest digest = MessageDigest.getInstance("MD5");
 
         // Read file in chunks
-        FileInputStream fis = new FileInputStream(filePath);
+        FileInputStream fis = new FileInputStream(file);
         byte[] buffer = new byte[1024];
         int bytesRead = 0;
 

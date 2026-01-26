@@ -6,7 +6,6 @@ import shared.messages.*;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.*;
@@ -15,10 +14,11 @@ import static shared.utils.UsernameValidation.usernameIsValid;
 
 public class ServerThread extends Thread {
     private final Socket socket;
-    private PrintWriter writer;
-    private BufferedReader reader;
-    private ObjectMapper mapper;
-    private Server server;
+    private final Server server;
+    private final PrintWriter writer;
+    private final BufferedReader reader;
+    private final ObjectMapper mapper;
+    private final PingInfo pingInfo;
     private final String PING = "PING";
     private final String PONG = "PONG";
     private final String BYE = "BYE";
@@ -30,22 +30,20 @@ public class ServerThread extends Thread {
     private final String FILE_TRANSFER_RESP = "FILE_TRANSFER_RESP";
     private final String UNKNOWN_COMMAND = "UNKNOWN_COMMAND";
     private String username;
-    private PingInfo pingInfo;
 
-    public ServerThread(Socket socket, Server server) {
+    public ServerThread(Socket socket, Server server, PrintWriter writer, BufferedReader reader, ObjectMapper mapper, PingInfo pingInfo) {
         this.socket = socket;
         this.server = server;
+        this.writer = writer;
+        this.reader = reader;
+        this.mapper = mapper;
+        this.pingInfo = pingInfo;
     }
 
     public void run() {
         assert server != null : "Server instance is null.";
 
         try {
-            writer = new PrintWriter(socket.getOutputStream(), true);
-            reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            mapper = new ObjectMapper();
-            pingInfo = new PingInfo();
-
             welcomeClient();
             awaitLogin();
             informOthersOfJoin();
@@ -95,8 +93,8 @@ public class ServerThread extends Thread {
                 return;
             }
 
-            String fileTransferRespJson = mapper.writeValueAsString(new FileTransferResponse(username, message.code()));
             // S -> sender: FILE_TRANSFER_RESP {"status":"OK","username":"<username>","code":0/1}
+            String fileTransferRespJson = mapper.writeValueAsString(new FileTransferResponse("OK", username, message.code()));
             senderWriter.println("FILE_TRANSFER_RESP " + fileTransferRespJson);
         } catch (JsonProcessingException e) {
             writer.println("PARSE_ERROR");
@@ -107,7 +105,8 @@ public class ServerThread extends Thread {
         int errorCode = -1;
 
         try {
-            FileTransferRequest request = mapper.readValue(jsonString, FileTransferRequest.class);
+            FileTransferRequestMessage request = mapper.readValue(jsonString, FileTransferRequestMessage.class);
+            System.out.println(request);
 
             PrintWriter recipient = server.getUser(request.username());
             if (username == null) {
@@ -116,12 +115,19 @@ public class ServerThread extends Thread {
                 errorCode = 5000;
             }
 
-            if (errorCode != -1) {
-                // TODO: S -> C: FILE_TRANSFER_RESP {"status":"ERROR","code":<error code>}
-            } else {
-                String forwardReqJson = mapper.writeValueAsString(new FileTransferRequest(username, request.file()));
-                recipient.println("FILE_TRANSFER_REQ " + forwardReqJson);
-            }
+            if (errorCode != -1) return;
+
+//            if (errorCode != -1) {
+//                // S -> C: FILE_TRANSFER_RESP {"status":"ERROR","code":<error code>}
+//                String errorRespJson = mapper.writeValueAsString(new ResponseMessage("ERROR", errorCode));
+//                writer.println("FILE_TRANSFER_RESP " + errorRespJson);
+//                return;
+//            }
+
+//            String forwardReqJson = mapper.writeValueAsString(new FileTransferRequestMessage(username, request.filename(), request.filesize(), request.id(), request.checksum()));
+//            // BUG: This writes to the recipient's serverthread printwriter
+//            recipient.println("FILE_TRANSFER_REQ " + forwardReqJson);
+//            System.out.println("Sending FILE_TRANSFER_REQ to " + request.username());
         } catch (JsonProcessingException e) {
             writer.println("PARSE_ERROR");
         }
@@ -283,7 +289,7 @@ public class ServerThread extends Thread {
         HashMap<String, PrintWriter> users = server.getUsers();
 
         users.forEach((name, writer) -> {
-            if (!name.equals(username)) {
+            if (!name.equals(username.toLowerCase())) {
                 writer.println(message);
             }
         });

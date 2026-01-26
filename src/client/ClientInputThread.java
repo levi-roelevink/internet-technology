@@ -3,40 +3,47 @@ package client;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import shared.messages.BroadcastRequestMessage;
-import shared.messages.FileTransferRequest;
+import shared.messages.FileTransferRequestMessage;
+import shared.messages.FileTransferResponse;
 import shared.messages.PrivateMessage;
-import shared.utils.MD5Checksum;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.Socket;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.security.NoSuchAlgorithmException;
 import java.util.Scanner;
 import java.util.UUID;
+
+import static shared.utils.ChecksumGenerator.getFileChecksum;
+import static shared.utils.PromptUser.*;
 
 public class ClientInputThread extends Thread {
     private final Socket socket;
     private final PrintWriter writer;
     private final ObjectMapper mapper;
     private final Scanner scanner;
+    private final String username;
+    private final FileTransferManager fileTransferManager;
 
     private final String BYE = "BYE";
     private final String MENU = """
             1) Broadcast message
             2) List online users
             3) Private message
+            4) File transfer
+            5) Respond to file transfer requests
             0) Terminate connection
             Select an option:\s""";
 
-    ClientInputThread(Socket socket, PrintWriter writer, ObjectMapper objectMapper) {
+    ClientInputThread(String username, Socket socket, PrintWriter writer, ObjectMapper objectMapper, FileTransferManager fileTransferManager) {
+        this.username = username;
         this.socket = socket;
         this.writer = writer;
         this.mapper = objectMapper;
         this.scanner = new Scanner(System.in);
+        this.fileTransferManager = fileTransferManager;
     }
 
     @Override
@@ -44,7 +51,6 @@ public class ClientInputThread extends Thread {
         while (true) {
             System.out.print(MENU);
             int userInput = getIntBetweenBounds(0, 5);
-            scanner.nextLine(); // Consume leftover line
 
             switch (userInput) {
                 case 0 -> terminateConnection();
@@ -52,28 +58,55 @@ public class ClientInputThread extends Thread {
                 case 2 -> listUsers();
                 case 3 -> privateMessage();
                 case 4 -> fileTransferRequest();
+                case 5 -> respondToFileTransferRequest();
             }
         }
     }
 
-    private void fileTransferRequest() {
-        String recipient = promptForInput("User to transfer file to: ");
-        String fileName = promptForInput("File name: ");
+    private void respondToFileTransferRequest() {
+        // Prompt for username of sender
+        String sender = promptForStringInput("Who's request would you like to respond to: ");
+
+        System.out.printf("0 to reject or 1 to accept %s's request: ", sender);
+        int input = getIntBetweenBounds(0, 1);
 
         try {
-            Path path = Paths.get(fileName);
-            long fileSize = Files.size(path);
-
-            String uuidString = UUID.randomUUID().toString();
-
-            MD5Checksum checksumGenerator = new MD5Checksum();
-            String checksum = checksumGenerator.getFileChecksum(fileName);
-
-            String jsonString = mapper.writeValueAsString(new FileTransferRequest(recipient, new File(uuidString, fileName, fileSize, checksum)));
-            writer.println("FILE_TRANSFER_REQ " + jsonString);
-
-        } catch (IOException | NoSuchAlgorithmException e) {
+            // Recipient -> S: FILE_TRANSFER_RESP {"username":"<username>","code":0/1}
+            String fileTransferRespJson = mapper.writeValueAsString(new FileTransferResponse(sender, input));
+            writer.println("FILE_TRANSFER_RESP " + fileTransferRespJson);
+            System.out.println("Recipient -> S: FILE_TRANSFER_RESP");
+        } catch (JsonProcessingException e) {
             System.err.println(e.getMessage());
+        }
+
+        if (input == 1) {
+            // TODO: initiate FileReceiverThread
+        }
+    }
+
+    private void fileTransferRequest() {
+        String recipient = promptForStringInput("User to transfer file to: ");
+        String path = promptForStringInput("File path: ");
+
+        try {
+            File file = new File(path);
+            if (file.exists()) {
+                String fileName = file.getName();
+                long fileSize = file.length() / 10;
+
+                String uuidString = UUID.randomUUID().toString();
+                String checksum = getFileChecksum(file);
+
+                String reqMsg = mapper.writeValueAsString(new FileTransferRequestMessage(recipient, fileName, fileSize, uuidString, checksum));
+                writer.println("FILE_TRANSFER_REQ " + reqMsg);
+                System.out.println("File transfer request sent.");
+
+                fileTransferManager.addPendingFileSendRequest(recipient, uuidString, file);
+            } else {
+                System.err.println("Couldn't find this file.");
+            }
+        } catch (IOException | NoSuchAlgorithmException e) {
+            System.err.println("Invalid message provided.");
         }
     }
 
@@ -95,8 +128,8 @@ public class ClientInputThread extends Thread {
 
     private void privateMessage() {
         try {
-            String user = promptForInput("User to message: ");
-            String message = promptForInput("Enter your message: ");
+            String user = promptForStringInput("User to message: ");
+            String message = promptForStringInput("Enter your message: ");
 
             String jsonString = mapper.writeValueAsString(new PrivateMessage(user, message));
             writer.println("PRIVATE_MESSAGE_REQ " + jsonString);
@@ -110,21 +143,9 @@ public class ClientInputThread extends Thread {
         writer.println("LIST_USERS_REQ");
     }
 
-    private String promptForInput(String prompt) {
-        System.out.print(prompt);
-        String input = scanner.nextLine();
-
-        while (input == null || input.isBlank()) {
-            System.out.print(prompt);
-            input = scanner.nextLine();
-        }
-
-        return input;
-    }
-
     private void broadcastRequest() {
         try {
-            String message = promptForInput("Enter your message: ");
+            String message = promptForStringInput("Enter your message: ");
             writer.println("BROADCAST_REQ " + mapper.writeValueAsString(new BroadcastRequestMessage(message)));
         } catch (Exception e) {
             MessageCodePrinter.printMessageFromCode(0);
@@ -137,15 +158,5 @@ public class ClientInputThread extends Thread {
 
         System.out.println("Bye.");
         System.exit(0);
-    }
-
-    private int getIntBetweenBounds(int lowerBound, int upperBound) {
-        int result = scanner.nextInt();
-        while (result < lowerBound || result > upperBound) {
-            System.out.printf("Please enter a value between %d and %d: ", lowerBound, upperBound);
-            result = scanner.nextInt();
-        }
-
-        return result;
     }
 }
