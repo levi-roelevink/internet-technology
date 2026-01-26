@@ -10,18 +10,26 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.security.NoSuchAlgorithmException;
 import java.util.Scanner;
 
+import static shared.messages.MessageSender.sendLine;
 import static shared.utils.UsernameValidation.usernameIsValid;
 
 public class Client {
-    private Socket clientSocket;
     private PrintWriter writer;
     private BufferedReader reader;
     private Scanner scanner;
     private ObjectMapper mapper;
-    private static final int PORT = 3000;
-    private static final String IP = "127.0.0.1";
+    private FileTransferManager fileTransferManager;
+
+    public Client() throws IOException, NoSuchAlgorithmException {
+        Socket socket = new Socket("127.0.0.1", 1337);
+        this.writer = new PrintWriter(socket.getOutputStream());
+        this.reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        this.mapper = new ObjectMapper();
+        this.fileTransferManager = new FileTransferManager();
+    }
 
     public static void main(String[] args) {
         try {
@@ -34,14 +42,12 @@ public class Client {
 
     public void run() throws IOException {
         scanner = new Scanner(System.in);
-        mapper = new ObjectMapper();
-        startConnection(IP, PORT);
 
         awaitWelcomeMessage();
         logIn();
 
-        ClientInputThread clientInputThread = new ClientInputThread(clientSocket, writer, mapper);
-        ServerInputThread serverInputThread = new ServerInputThread(writer, reader, mapper);
+        ClientInputThread clientInputThread = new ClientInputThread(writer, mapper, fileTransferManager, this);
+        ServerInputThread serverInputThread = new ServerInputThread(reader, writer, mapper, fileTransferManager, this);
         clientInputThread.start();
         serverInputThread.start();
     }
@@ -67,7 +73,7 @@ public class Client {
             if (!usernameIsValid(userInput)) {
                 MessageCodePrinter.printMessageFromCode(5001);
             } else {
-                writer.println("LOGIN " + mapper.writeValueAsString(new UsernameMessage(userInput)));
+                sendLine("LOGIN " + mapper.writeValueAsString(new UsernameMessage(userInput)), writer);
                 loggedIn = awaitLoginResponse();
             }
         }
@@ -92,17 +98,5 @@ public class Client {
         }
 
         return false;
-    }
-
-    public void startConnection(String ip, int port) throws IOException {
-        clientSocket = new Socket(ip, port);
-        writer = new PrintWriter(clientSocket.getOutputStream(), true);
-        reader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-    }
-
-    public void stopConnection() throws IOException {
-        reader.close();
-        writer.close();
-        clientSocket.close();
     }
 }

@@ -3,17 +3,20 @@ package client;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import shared.messages.*;
-import shared.utils.PromptUser;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 
+import static shared.messages.MessageSender.sendLine;
+
 public class ServerInputThread extends Thread {
-    private final PrintWriter writer;
     private final BufferedReader reader;
+    private final PrintWriter writer;
     private final ObjectMapper mapper;
+    private final FileTransferManager fileTransferManager;
+    private final Client client;
     private final String BROADCAST_RESP = "BROADCAST_RESP";
     private final String BROADCAST = "BROADCAST";
     private final String PARSE_ERROR = "PARSE_ERROR";
@@ -29,13 +32,16 @@ public class ServerInputThread extends Thread {
     private final String PRIVATE_MESSAGE_RESP = "PRIVATE_MESSAGE_RESP";
     private final String PRIVATE_MESSAGE = "PRIVATE_MESSAGE";
     private final String FILE_TRANSFER_REQ = "FILE_TRANSFER_REQ";
+    private final String FILE_TRANSFER_RESP = "FILE_TRANSFER_RESP";
     private final String UNKNOWN_COMMAND = "UNKNOWN_COMMAND";
-    private final ArrayList<FileTransferRequest> fileTransferRequests = new ArrayList<>();
+    private final ArrayList<FileTransferRequestMessage> fileTransferRequests = new ArrayList<>();
 
-    ServerInputThread(PrintWriter writer, BufferedReader reader, ObjectMapper mapper) {
+    ServerInputThread(BufferedReader reader, PrintWriter writer, ObjectMapper mapper, FileTransferManager fileTransferManager, Client client) {
         this.writer = writer;
         this.reader = reader;
         this.mapper = mapper;
+        this.fileTransferManager = fileTransferManager;
+        this.client = client;
     }
 
     @Override
@@ -59,6 +65,7 @@ public class ServerInputThread extends Thread {
                         case PRIVATE_MESSAGE_RESP -> handlePrivateMessageResp(lineParts[1]);
                         case PRIVATE_MESSAGE -> handlePrivateMessage(lineParts[1]);
                         case FILE_TRANSFER_REQ -> handleFileTransferReq(lineParts[1]);
+                        case FILE_TRANSFER_RESP -> handleFileTransferResp(lineParts[1]);
                         case UNKNOWN_COMMAND -> handleUnknownCommand();
                     }
                 }
@@ -68,45 +75,41 @@ public class ServerInputThread extends Thread {
         }
     }
 
-    private void handleFileTransferReq(String jsonString) throws JsonProcessingException {
+    private void handleFileTransferResp(String jsonString) throws JsonProcessingException {
         try {
-            FileTransferRequest message = mapper.readValue(jsonString, FileTransferRequest.class);
+            // S -> sender: FILE_TRANSFER_RESP {"status":"OK","username":"<username>","code":0/1}
+            FileTransferResponse message = mapper.readValue(jsonString, FileTransferResponse.class);
+            System.out.println("RECEIVED FILE_TRANSFER_RESP: " + message);
 
-            int index = existingFileTransferRequest(message.username());
-            // TODO: this should be a set I think
-            if (index != -1) {
-                // Replace existing request with new request
-                fileTransferRequests.remove(index);
+            if (!OK.equals(message.status())) {
+                MessageCodePrinter.printMessageFromCode(message.code());
+                return;
             }
-            fileTransferRequests.add(message);
 
-            System.out.printf("Incoming file transfer request\nUsername: %s\nFile: %s\nFile size: %d\n0 to reject or 1 to accept: ", message.username(), message.fileName(), message.fileSize());
-            int input = PromptUser.getIntBetweenBounds(0, 1);
+            String acceptedOrRejected = message.code() == 0 ? "rejected" : "accepted";
+            System.out.printf("%s %s your request to transfer a file.%n", message.username(), acceptedOrRejected);
 
-            // Recipient -> S: FILE_TRANSFER_RESP {"username":"<username>","code":0/1}
-            String fileTransferRespJson = mapper.writeValueAsString(new FileTransferResponse(message.username(), input));
-            writer.println("FILE_TRANSFER_RESP " + fileTransferRespJson);
-
-            // TODO: File transfer request was accepted so connect to server through a new socket
-            if (input == 1) {
-
+            if (message.code() == 1) {
+//                new FileSenderThread(fileTransferManager, username, message.username()).start();
             }
         } catch (JsonProcessingException e) {
             System.err.println(e.getMessage());
         }
     }
 
-    private int existingFileTransferRequest(String sender) {
-        int size = fileTransferRequests.size();
-        if (size == 0) return -1;
+    private void handleFileTransferReq(String jsonString) throws JsonProcessingException {
+        try {
+            FileTransferRequestMessage message = mapper.readValue(jsonString, FileTransferRequestMessage.class);
+            System.out.println("RECEIVED FILE_TRANSFER_REQ: " + message);
 
-        for (int i = 0; i < fileTransferRequests.size(); i++) {
-            if (sender.equals(fileTransferRequests.get(i).username())) {
-                return i;
-            }
+
+            // TODO: check if pending request between users exists
+
+            System.out.printf("%s would like to send you a %d kb file named %s.%n", message.username(), message.filesize(), message.filename());
+            System.out.println("Use the respond to file transfer requests option in the menu to accept or reject.");
+        } catch (JsonProcessingException e) {
+            System.err.println(e.getMessage());
         }
-
-        return -1;
     }
 
     private void handlePrivateMessage(String jsonString) throws JsonProcessingException {
@@ -201,7 +204,7 @@ public class ServerInputThread extends Thread {
     }
 
     private void handlePing() {
-        writer.println(PONG);
+        sendLine(PONG, writer);
     }
 
     private void handlePongError(String jsonString) throws JsonProcessingException {

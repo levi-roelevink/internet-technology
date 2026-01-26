@@ -87,7 +87,7 @@ public class ServerThread extends Thread {
             FileTransferResponse message = mapper.readValue(jsonString, FileTransferResponse.class);
 
             // Send to message.username()'s PrintWriter
-            PrintWriter senderWriter = server.getUser(message.username());
+            PrintWriter senderWriter = server.getWriter(message.username());
             if (senderWriter == null) {
                 // TODO: error code 2000
                 return;
@@ -102,34 +102,23 @@ public class ServerThread extends Thread {
     }
 
     private void handleFileTransferRequest(String jsonString) throws JsonProcessingException {
-        int errorCode = -1;
-
-        try {
+        if (username == null) {
+            String errorResp = mapper.writeValueAsString(new ResponseMessage("ERROR", 2000));
+            writer.println("FILE_TRANSFER_RESP " + errorResp);
+        } else {
             FileTransferRequestMessage request = mapper.readValue(jsonString, FileTransferRequestMessage.class);
-            System.out.println(request);
+            System.out.println("request: " + request);
 
-            PrintWriter recipient = server.getUser(request.username());
-            if (username == null) {
-                errorCode = 2000;
-            } else if (recipient == null) {
-                errorCode = 5000;
+            System.out.println("Request.username(): " + request.username());
+            PrintWriter recipientWriter = server.getWriter(request.username());
+            if (recipientWriter == null) {
+                String errorResp = mapper.writeValueAsString(new ResponseMessage("ERROR", 5000));
+                writer.println("FILE_TRANSFER_RESP " + errorResp);
+            } else {
+                String forwardReq = mapper.writeValueAsString(new FileTransferRequestMessage(username, request.filename(), request.filesize(), request.id(), request.checksum()));
+                recipientWriter.println("FILE_TRANSFER_REQ " + forwardReq);
+                System.out.println("Sent FILE_TRANSFER_REQ to: " + recipientWriter);
             }
-
-            if (errorCode != -1) return;
-
-//            if (errorCode != -1) {
-//                // S -> C: FILE_TRANSFER_RESP {"status":"ERROR","code":<error code>}
-//                String errorRespJson = mapper.writeValueAsString(new ResponseMessage("ERROR", errorCode));
-//                writer.println("FILE_TRANSFER_RESP " + errorRespJson);
-//                return;
-//            }
-
-//            String forwardReqJson = mapper.writeValueAsString(new FileTransferRequestMessage(username, request.filename(), request.filesize(), request.id(), request.checksum()));
-//            // BUG: This writes to the recipient's serverthread printwriter
-//            recipient.println("FILE_TRANSFER_REQ " + forwardReqJson);
-//            System.out.println("Sending FILE_TRANSFER_REQ to " + request.username());
-        } catch (JsonProcessingException e) {
-            writer.println("PARSE_ERROR");
         }
     }
 
@@ -284,7 +273,6 @@ public class ServerThread extends Thread {
         }
     }
 
-    // The message argument should be formatted like "JOINED {"username":"<username>"}"
     private void writeToAllButMe(String message) {
         HashMap<String, PrintWriter> users = server.getUsers();
 
